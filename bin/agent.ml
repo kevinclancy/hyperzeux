@@ -1,4 +1,3 @@
-
 type state =
   (* [NewAgent script_run] where [script_run] may produce [Act] effects  *)
   | NewAgent of (t -> unit)

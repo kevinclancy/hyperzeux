@@ -10,7 +10,7 @@ let run (agent : Agent.t) =
   done
 
 let create (pos : int * int) =
-  Agent.create run pos
+  Agent.create run pos (TextureMap.get_texture "person_forward_recon.png")
 
 (* let resume () =
   let open Effect.Deep in

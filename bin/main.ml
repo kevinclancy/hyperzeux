@@ -1,6 +1,7 @@
 
-
 let () =
+  let agent = Patroller.create (3,3) in
+  let _ = Agent.resume agent in
   Raylib.init_window Config.board_pixels_width Config.board_pixels_height "raylib [core] example - basic window";
   Raylib.set_target_fps 60;
   (* let texture_map : Raylib.Texture.t StringMap.t ref = ref StringMap.empty in

@@ -1,15 +1,18 @@
 
 type action =
-  | WalkNorth
-  | WalkEast
-  | WalkSouth
-  | WalkWest
+  | Walk of int * int
   | Wait
 
 type _ Effect.t += Act : action -> unit Effect.t
 
-let walk_north () = Effect.perform @@ Act WalkNorth;;
+let walk_north () = Effect.perform @@ Act (Walk (0, -1))
+let walk_east () = Effect.perform @@ Act (Walk (1, 0))
+let walk_south () = Effect.perform @@ Act (Walk (0, 1))
+let walk_west () = Effect.perform @@ Act (Walk (-1, 0))
 
-(* let walk_east () = Effect.perform @@ Act WalkEast;; *)
-
-let walk_south () = Effect.perform @@ Act WalkNorth;;
+let print_action (a : action) : unit =
+  match a with
+  | Walk (dx, dy) ->
+    Printf.printf "%d %d\n" dx dy
+  | Wait ->
+    Printf.printf "wait\n"

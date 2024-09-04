@@ -7,6 +7,6 @@ type static_object = {
 }
 
 type position = {
-  x : int ;  (** The column of the cell position *)
-  y : int ;  (** The row of the cell position *)
+  x : int (** The column of the cell position *) ;
+  y : int (** The row of the cell position *) ;
 }

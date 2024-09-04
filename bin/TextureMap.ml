@@ -1,8 +1,8 @@
-module StringMap = Map.Make(String)
+open Common
 
 let texture_map : Raylib.Texture.t StringMap.t ref = ref StringMap.empty
 
-let load_texture (filename : string) =
+let load (filename : string) =
   (* ick... use string interpolation instead *)
   let full_filename = String.concat "" ["./images/" ; filename] in
   let texture_map' =
@@ -13,6 +13,6 @@ let load_texture (filename : string) =
   in
   texture_map := texture_map'
 
-  let get_texture (name : string) =
+  let get (name : string) =
     StringMap.find name !texture_map
 

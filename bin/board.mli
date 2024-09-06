@@ -11,15 +11,19 @@ module Blueprint : sig
         [empty_obj_key]. *)
     val create_empty : int -> int -> string -> t
 
-    (** [set_static_object_key blueprint pos key] Set position [pos] to static object key
-        [key]*)
-    val set_static_object_key : t -> position -> string -> unit
+    (** [set_static_object_key blueprint pos key color] Set position [pos] to static object key
+        [key] and color [color] *)
+    val set_static_object : t -> position -> string -> Raylib.Color.t -> unit
 
     (** [set_agent blueprint agent_name agent_class_name texture_name pos] *)
     val add_agent : t -> string -> string -> string -> position -> unit
 
+    (** [draw_prep blueprint] Draws board components to a render texture in preparation for drawing *)
+    val draw_prep : t -> unit
+
     (** [draw blueprint pos scale] *)
     val draw : t -> Raylib.Vector2.t -> float -> unit
+
 end
 
 (** [create_empty width height empty_object] Creates an empty board [width] cells across and [height] cells high.

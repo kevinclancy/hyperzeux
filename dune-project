@@ -21,7 +21,7 @@
  (name hyperzeux)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml raylib dune)
+ (depends ocaml raylib raygui dune)
  (tags
   (topics "to describe" your project)))
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

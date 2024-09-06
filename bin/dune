@@ -1,4 +1,4 @@
 (executable
  (public_name hyperzeux)
  (name main)
- (libraries raylib hyperzeux))
+ (libraries raylib raygui hyperzeux))

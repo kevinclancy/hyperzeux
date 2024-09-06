@@ -12,6 +12,7 @@ bug-reports: "https://github.com/username/reponame/issues"
 depends: [
   "ocaml"
   "raylib"
+  "raygui"
   "dune" {>= "3.13"}
   "odoc" {with-doc}
 ]

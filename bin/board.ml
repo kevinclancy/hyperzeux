@@ -12,10 +12,15 @@ module Blueprint = struct
     texture_name : string
   }
 
+  type static_object_blueprint = {
+    name : string ;
+    color : Raylib.Color.t
+  }
+
   type t = {
     (* static_objects[x][y] is a key of the StaticObjectMap
         for the static object at position (x,y) *)
-    static_objects : string ref array array;
+    static_objects : static_object_blueprint ref array array;
     (* For each agent in the board's starting state. *)
     agents : agent_blueprint list ref;
     (* A texture depicting the full static object map. *)
@@ -47,7 +52,10 @@ module Blueprint = struct
       done;
     end_texture_mode ();
     {
-      static_objects = Array.init width (fun _ -> Array.init height (fun _ -> ref empty_object_key));
+      static_objects =
+        Array.init
+          width
+          (fun _ -> Array.init height (fun _ -> ref { name = empty_object_key ; color = Color.white }));
       agents = ref [] ;
       static_bg_texture ;
       render_texture =
@@ -57,27 +65,26 @@ module Blueprint = struct
       grid_texture
     }
 
-  let get_static_object_ref (bp : t) (pos : position) : string ref =
+  let get_static_object_ref (bp : t) (pos : position) : static_object_blueprint ref =
     Array.get (Array.get bp.static_objects pos.x) pos.y
 
-  let set_static_object_key (bp : t) (pos : position) (static_obj_key : string) : unit =
-    get_static_object_ref bp pos := static_obj_key;
+  let set_static_object (bp : t) (pos : position) (static_obj_key : string) (color : Raylib.Color.t): unit =
+    get_static_object_ref bp pos := { name = static_obj_key; color };
     let static_obj = StaticObjectMap.get static_obj_key in
     let open Raylib in
     begin_texture_mode bp.static_bg_texture;
       let texture = TextureMap.get static_obj.texture_name in
       let x = Float.of_int @@ Config.char_width * pos.x in
       let y = Float.of_int @@ Config.char_height * pos.y in
-      draw_texture_ex texture (Vector2.create x y) 0.0 1.0 Color.white;
+      draw_texture_ex texture (Vector2.create x y) 0.0 1.0 color;
     end_texture_mode ()
 
   let add_agent (bp : t) (agent_name : string) (agent_class_name : string) (texture_name : string) (pos : position) =
-    assert (StaticObjectMap.get !(get_static_object_ref bp pos)).traversable;
+    assert (StaticObjectMap.get (!(get_static_object_ref bp pos)).name).traversable;
     assert (List.find_opt (fun agent_bp -> agent_bp.pos = pos) !(bp.agents) |> Option.is_none);
     bp.agents := { agent_class_name ; agent_name; texture_name; pos} :: !(bp.agents)
 
-  (** [draw blueprint pos scale] *)
-  let draw (bp : t) (pos : Raylib.Vector2.t) (scale : float) : unit =
+  let draw_prep (bp : t) : unit =
     let open Raylib in
     begin_texture_mode bp.render_texture;
       let draw_agent (agent_blueprint : agent_blueprint) : unit =
@@ -93,16 +100,17 @@ module Blueprint = struct
       draw_texture_pro (RenderTexture.texture bp.static_bg_texture) src dest (Vector2.create 0.0 0.0) 0.0 Color.white;
       List.iter draw_agent !(bp.agents);
       draw_texture_pro (RenderTexture.texture bp.grid_texture) src dest (Vector2.zero ()) 0.0 Color.white;
-    end_texture_mode ();
+    end_texture_mode ()
 
-    begin_drawing ();
-      clear_background Color.gray;
-      let width = (Float.of_int Config.board_pixels_width) in
-      let height = (Float.of_int Config.board_pixels_height) in
-      let src = Rectangle.create 0.0 0.0 width (-. height) in
-      let dest = Rectangle.create 0.0 0.0 (width *. scale) (height *. scale) in
-      draw_texture_pro (RenderTexture.texture bp.render_texture) src dest pos 0.0 Color.white;
-    end_drawing ()
+  (** [draw blueprint pos scale] *)
+  let draw (bp : t) (pos : Raylib.Vector2.t) (scale : float) : unit =
+    let open Raylib in
+    clear_background Color.gray;
+    let width = (Float.of_int Config.board_pixels_width) in
+    let height = (Float.of_int Config.board_pixels_height) in
+    let src = Rectangle.create 0.0 0.0 width (-. height) in
+    let dest = Rectangle.create 0.0 0.0 (width *. scale) (height *. scale) in
+    draw_texture_pro (RenderTexture.texture bp.render_texture) src dest pos 0.0 Color.white;
 end
 
 module AgentSet = Set.Make(Agent)

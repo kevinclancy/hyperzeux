@@ -55,7 +55,7 @@ let () =
   Board.Blueprint.set_static_object bp {x = 1 ; y = 1} "wall" Color.gold;
   Board.Blueprint.add_agent bp "marvin" "patroller" "person_south_recon.png" {x = 3 ; y = 3};
   let game_state =
-    Editing {
+    ref @@ Editing {
       blueprint = bp;
       camera_pos = ref @@ Vector2.create 0.0 0.0 ;
       scale = ref 1.0 ;
@@ -63,9 +63,13 @@ let () =
     }
   in
   while not (window_should_close ()) do
-    match game_state with
+    match !game_state with
     | Playing b ->
-      failwith "todo"
+      Board.update b;
+      Board.prep_draw b;
+      begin_drawing ();
+        Board.draw b (Vector2.zero ()) 4.0;
+      end_drawing ();
     | Editing { blueprint ; camera_pos ; scale ; object_selector } ->
       let dt = Raylib.get_frame_time () in
       let mouse_delta = Raylib.get_mouse_delta () in
@@ -80,7 +84,9 @@ let () =
       if Raylib.is_key_pressed Key.Comma then
         ObjectSelector.prev_obj object_selector
       else if is_key_pressed Key.Period then
-        ObjectSelector.next_obj object_selector;
+        ObjectSelector.next_obj object_selector
+      else if is_key_pressed Key.P then
+        game_state := Playing (Board.create_from_blueprint blueprint);
 
       if Raylib.is_mouse_button_down MouseButton.Left then
         (* TODO: compute the cell position here *)

@@ -41,6 +41,9 @@ val set_static_object : t -> position -> static_object -> unit
     vacant and no agent with a matching name already exists in [board]. *)
 val add_agent : t -> Agent.t -> unit
 
+(** [prep_draw board] Prepare board for drawing *)
+val prep_draw : t -> unit
+
 (** [draw board pos scale] Draw the board positioned at [pos] scaled by [scale] *)
 val draw : t -> Raylib.Vector2.t -> float -> unit
 

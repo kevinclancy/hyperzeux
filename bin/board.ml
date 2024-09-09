@@ -18,6 +18,10 @@ module Blueprint = struct
   }
 
   type t = {
+    (** Grid cells of board in width *)
+    width : int ;
+    (** Height of board in width *)
+    height : int ;
     (* static_objects[x][y] is a key of the StaticObjectMap
         for the static object at position (x,y) *)
     static_objects : static_object_blueprint ref array array;
@@ -52,6 +56,8 @@ module Blueprint = struct
       done;
     end_texture_mode ();
     {
+      width ;
+      height ;
       static_objects =
         Array.init
           width
@@ -117,6 +123,7 @@ module AgentSet = Set.Make(Agent)
 
 type grid_cell = {
   static_object : static_object ;
+  static_object_color : Raylib.Color.t ;
   agent : Agent.t option ;
 }
 
@@ -125,35 +132,34 @@ type t = {
   (* List of all agents *)
   agents : AgentSet.t ref;
   (* A texture depicting the full static object map *)
-  static_texture : Raylib.Texture.t ;
+  static_texture : Raylib.RenderTexture.t ;
   (* Texture to render to screen *)
   render_texture : Raylib.RenderTexture.t ;
 }
 
-let create_from_blueprint (blueprint : Blueprint.t) : t =
-  failwith "todo"
-
 let create_empty (width : int)
                  (height : int)
                  (empty_object : static_object)  : t =
-  let imBlank =
-    Raylib.gen_image_color
+  let open Raylib in
+  let static_texture =
+    load_render_texture
       (width * Config.char_width)
       (height * Config.char_height)
-      Raylib.Color.black
   in
-  let texture = Raylib.load_texture_from_image imBlank in
+  begin_texture_mode static_texture;
+  clear_background Color.black;
+  end_texture_mode ();
   {
     grid =
       Array.init Config.board_cells_width (fun _ ->
         Array.init Config.board_cells_height (fun _ ->
-          ref { static_object = empty_object ; agent = None }
+          ref { static_object = empty_object ; static_object_color = Raylib.Color.white ; agent = None }
         )
       );
     agents = ref AgentSet.empty;
-    static_texture = texture ;
+    static_texture ;
     render_texture =
-      Raylib.load_render_texture
+      load_render_texture
         (width * Config.char_width)
         (height * Config.char_height);
   }
@@ -178,26 +184,26 @@ let add_agent (board : t) (agent : Agent.t) : unit =
   assert (not @@ AgentSet.mem agent !(board.agents));
   board.agents := AgentSet.add agent !(board.agents)
 
-let draw (board : t) (pos : Raylib.Vector2.t) (scale : float) : unit =
+let prep_draw (board : t) : unit =
   let open Raylib in
   begin_texture_mode board.render_texture;
     let draw_agent (agent : Agent.t) : unit =
-      let { x = x ; y = y } = Agent.get_pos agent in
+      let {x;y} = Agent.get_pos agent in
       let pos = Vector2.create (Float.of_int @@ x * Config.char_width) (Float.of_int @@ y * Config.char_height) in
       draw_texture_ex (Agent.get_texture agent) pos 0.0 1.0 Color.white;
     in
-    draw_texture_ex board.static_texture (Vector2.create 0.0 0.0) 0.0 1.0 Color.white;
+    draw_texture_ex (RenderTexture.texture board.static_texture) (Vector2.create 0.0 0.0) 0.0 1.0 Color.white;
     AgentSet.iter draw_agent !(board.agents);
-  end_texture_mode ();
+  end_texture_mode ()
 
-  begin_drawing ();
-    clear_background Color.gray;
-    let width = (Float.of_int Config.board_pixels_width) in
-    let height = (Float.of_int Config.board_pixels_height) in
-    let src = Rectangle.create 0.0 0.0 width (-. height) in
-    let dest = Rectangle.create 0.0 0.0 (width *. scale) (height *. scale) in
-    draw_texture_pro (RenderTexture.texture board.render_texture) src dest pos 0.0 Color.white;
-  end_drawing ()
+let draw (board : t) (pos : Raylib.Vector2.t) (scale : float) : unit =
+  let open Raylib in
+  clear_background Color.gray;
+  let width = (Float.of_int Config.board_pixels_width) in
+  let height = (Float.of_int Config.board_pixels_height) in
+  let src = Rectangle.create 0.0 0.0 width (-. height) in
+  let dest = Rectangle.create 0.0 0.0 (width *. scale) (height *. scale) in
+  draw_texture_pro (RenderTexture.texture board.render_texture) src dest pos 0.0 Color.white
 
 let update (board : t) : unit =
   let update_agent (agent : Agent.t) : unit =
@@ -216,11 +222,55 @@ let update (board : t) : unit =
     | Actions.Wait ->
       ()
   in
-  AgentSet.iter update_agent !(board.agents);;
+  AgentSet.iter update_agent !(board.agents)
 
-ignore set_agent;
-(* let grid = Array.init Config.board_cells_width (fun _ ->
-    Array.init Config.board_cells_height (fun _ ->
-      ref { static_object = None ; agent = None }
-    )
-  ) *)
+let create_from_blueprint (blueprint : Blueprint.t) : t =
+  let open Raylib in
+  let create_static_obj (static_obj_bp : Blueprint.static_object_blueprint) : grid_cell ref =
+    ref {
+      static_object = StaticObjectMap.get static_obj_bp.name ;
+      static_object_color = static_obj_bp.color;
+      agent = None
+    }
+  in
+  let grid = Array.map (fun a -> Array.map (fun bp -> create_static_obj !bp) a) blueprint.static_objects in
+  let create_agent (agent_bp : Blueprint.agent_blueprint) : Agent.t =
+    let open AgentClass_intf in
+    let module ThisAgentClass = (val (AgentClassMap.get agent_bp.agent_class_name) : AgentClass) in
+    ThisAgentClass.create agent_bp.agent_name agent_bp.pos
+  in
+  let agents = List.map create_agent !(blueprint.agents) in
+  let add_agent (agent : Agent.t) : unit =
+    let {x;y} = Agent.get_pos agent in
+    let cell = Array.get (Array.get grid x) y in
+    cell := { !(cell) with agent = Some agent }
+  in
+  List.iter add_agent agents;
+  let board_width = blueprint.width * Config.char_width in
+  let board_height = blueprint.height * Config.char_height in
+  let static_texture = load_render_texture board_width board_height in
+  begin_texture_mode static_texture;
+    draw_rectangle 0 0 board_width board_height Color.black;
+    for x = 0 to blueprint.width-1 do
+      for y = 0 to blueprint.height-1 do
+        let cell = Array.get (Array.get grid x) y in
+        let pos =
+          Vector2.create
+            (Float.of_int @@ x * Config.char_width)
+            (Float.of_int @@ board_height - ((y + 1) * Config.char_height))
+        in
+        match (!cell).agent with
+        | Some _ ->
+          () (* agents are drawn per-frame *)
+        | None ->
+          let texture = TextureMap.get (!cell).static_object.texture_name in
+          draw_texture_ex texture pos 0.0 1.0 (!cell).static_object_color;
+      done;
+    done;
+  end_texture_mode ();
+  {
+    grid;
+    agents = ref (AgentSet.of_list agents);
+    static_texture;
+    render_texture = load_render_texture board_width board_height
+  }

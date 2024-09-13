@@ -42,3 +42,27 @@ let get_next_object (obj : static_object) =
     let ord = StringMap.find obj.name !name_to_ord in
     let ord' = if ord - 1 < 0 then !max_ord else ord - 1 in
     IntMap.find ord' !ord_to_obj
+
+let search (text : string) : static_object list =
+  (** Does [s] contain [text]? *)
+  let contains_text (s : string) : bool =
+    let open String in
+    let success = ref false in
+    for i = 0 to (length s - length text) do
+      let match_success = ref true in
+      for j = 0 to (length text)-1 do
+        if text.[j] <> s.[i + j] then
+          match_success := false
+        else
+          ();
+      done;
+      if !match_success then success := true else ();
+    done;
+    !success
+  in
+  if String.length text < 3 then
+    []
+  else
+    List.map snd @@
+      (IntMap.to_list @@ IntMap.filter (fun _ obj -> contains_text obj.name) !ord_to_obj)
+

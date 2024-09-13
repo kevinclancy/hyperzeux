@@ -16,3 +16,7 @@ val get_next_object : static_object -> static_object
 (** [get_next_object obj] Gets the object before [obj] in the order added.
     The object before the first is the last. *)
 val get_prev_object : static_object -> static_object
+
+(** [search s] is a list of all static objects whose names contains [s],
+    or empty if s has fewer than three characters. *)
+val search : string -> static_object list

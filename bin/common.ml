@@ -16,3 +16,11 @@ type position = {
   (* The row of the cell position *)
   y : int ;
 }
+
+let rect = Raylib.Rectangle.create
+
+let vec2 = Raylib.Vector2.create
+
+let (^*) = Raylib.Vector2.scale
+
+let (^+) = Raylib.Vector2.add

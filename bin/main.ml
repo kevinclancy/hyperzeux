@@ -2,6 +2,7 @@ open Common
 open Config
 open Raylib
 
+
 (* TODO: look into Raylib's built-in Camera module *)
 type camera = {
   position : Raylib.Vector2.t ;
@@ -19,6 +20,66 @@ type game_state =
   (* Editing blueprint camera_pos camera_scale *)
   | Editing of edit_state
   | Playing of Board.t
+
+(** Launches the display/update loop for a dialog to select a static object. *)
+let get_static_obj () : static_object option =
+  let open Raylib in
+
+  begin_drawing ();
+    (* Intentionally left empty to clear out input data,
+       i.e. prevent the textbox from starting out containing the letter of the key
+       that opened the static object selector *)
+  end_drawing ();
+
+  let edit_text = ref "" in
+  let obj_list = ref [] in
+  let selection = ref None in
+  while (not @@ is_key_pressed Key.Enter) && (not @@ window_should_close ()) && (Option.is_none !selection) do
+    clear_background Color.gray;
+    begin_drawing ();
+      let txt, _ =
+        Raygui.set_style (Default `Text_size) 24;
+        Raygui.text_box (rect 10.0 10.0 300.0 50.0) !edit_text true
+      in
+      let txt =
+        if String.length txt > 0 && ((Char.code txt.[String.length txt - 1]) = 0) then
+          String.sub txt 0 (String.length txt - 1)
+        else
+          txt
+      in
+      if not @@ String.equal !edit_text txt then
+        begin
+          edit_text := txt;
+          obj_list := StaticObjectMap.search txt;
+        end;
+      List.iteri (fun n obj ->
+        let m = Float.of_int @@ n in
+        let texture = TextureMap.get obj.texture_name in
+        let (but_x, but_y) = (10.0, (10.0 +. (m +. 1.0) *. 50.0)) in
+        let (but_w, but_h) = (300.0, 50.0) in
+        let button_rect = rect but_x but_y but_w but_h in
+        let tex_width = Float.of_int @@ Texture.width texture in
+        let tex_height = Float.of_int @@ Texture.height texture in
+        let dest_tex_rect =
+          rect
+            (but_x +. but_w -. (2.0 *. tex_width) -. 10.0)
+            (but_y +. 10.0)
+            (2.0 *. tex_width)
+            (2.0 *. tex_height)
+        in
+        if Raygui.button button_rect obj.name then
+          selection := Some obj;
+        Raylib.draw_texture_pro
+          texture
+          (rect 0.0 0.0 tex_width tex_height)
+          dest_tex_rect
+          (Vector2.zero ())
+          0.0
+          Color.white;
+      ) !obj_list;
+    end_drawing ();
+  done;
+  !selection
 
 let draw_object_selector (selected_obj : static_object) : unit =
   let boundary_left = Config.(screen_width_f -. object_selector_width -. object_selector_margin) in
@@ -86,7 +147,16 @@ let () =
       else if is_key_pressed Key.Period then
         ObjectSelector.next_obj object_selector
       else if is_key_pressed Key.P then
-        game_state := Playing (Board.create_from_blueprint blueprint);
+        game_state := Playing (Board.create_from_blueprint blueprint)
+      else if (is_key_pressed Key.O) then
+        begin
+          let opt_obj = get_static_obj () in
+          match opt_obj with
+          | Some obj ->
+            ObjectSelector.set_obj object_selector obj
+          | None ->
+            ()
+        end;
 
       if Raylib.is_mouse_button_down MouseButton.Left then
         (* TODO: compute the cell position here *)

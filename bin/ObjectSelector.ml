@@ -19,6 +19,9 @@ let get_curr_name (selector : t) : string =
 let get_curr_color (selector : t) : Raylib.Color.t =
   !(selector.color)
 
+let set_obj (selector : t) (obj : static_object) =
+  selector.curr_object := obj
+
 let next_obj (selector : t) =
   selector.curr_object := (StaticObjectMap.get_next_object !(selector.curr_object))
 

@@ -34,7 +34,8 @@ let get_static_obj () : static_object option =
   let edit_text = ref "" in
   let obj_list = ref [] in
   let selection = ref None in
-  while (not @@ is_key_pressed Key.Enter) && (not @@ window_should_close ()) && (Option.is_none !selection) do
+  let selected_index = ref None in
+  while (not @@ window_should_close ()) && (Option.is_none !selection) do
     clear_background Color.gray;
     begin_drawing ();
       let txt, _ =
@@ -51,6 +52,30 @@ let get_static_obj () : static_object option =
         begin
           edit_text := txt;
           obj_list := StaticObjectMap.search txt;
+          if List.length (!obj_list) > 0 then
+            selected_index := Some 0
+          else
+            selected_index := None
+        end;
+      if is_key_pressed Key.Down then
+        begin
+        match !selected_index with
+        | Some m ->
+          selected_index := Some ((m + 1) mod (List.length !obj_list))
+        | None ->
+          ()
+        end;
+      if is_key_pressed Key.Up then
+        begin
+          match !selected_index with
+          | Some m  ->
+            selected_index := Some (if m = 0 then (List.length !obj_list - 1) else m - 1)
+          | None ->
+            ()
+          end;
+      if is_key_pressed Key.Enter && Option.is_some !selected_index then
+        begin
+          selection := Some (List.nth !obj_list (Option.get !selected_index))
         end;
       List.iteri (fun n obj ->
         let m = Float.of_int @@ n in
@@ -67,6 +92,13 @@ let get_static_obj () : static_object option =
             (2.0 *. tex_width)
             (2.0 *. tex_height)
         in
+        begin
+        match !selected_index with
+        | Some m when m = n ->
+          Raygui.set_style (Button `Base_color_normal) 0xff00ffff
+        | _ ->
+          Raygui.set_style (Button `Base_color_normal) 0x0f0f0fff
+        end;
         if Raygui.button button_rect obj.name then
           selection := Some obj;
         Raylib.draw_texture_pro
@@ -103,12 +135,16 @@ let () =
   TextureMap.load "empty_cell.png";
   TextureMap.load "solid_wall.png";
   TextureMap.load "checkered_wall.png";
+  TextureMap.load "plant_1.png";
+  TextureMap.load "plant_2.png";
 
   AgentClassMap.add "patroller" (module Patroller);
 
   StaticObjectMap.add { name = "empty" ; texture_name = "empty_cell.png" ; traversable = true };
   StaticObjectMap.add { name = "wall" ; texture_name = "solid_wall.png" ; traversable = false };
   StaticObjectMap.add { name = "checkered_wall" ; texture_name = "checkered_wall.png" ; traversable = false };
+  StaticObjectMap.add { name = "plant_1" ; texture_name = "plant_1.png" ; traversable = true };
+  StaticObjectMap.add { name = "plant_2" ; texture_name = "plant_2.png" ; traversable = true };
 
   let bp =
     Board.Blueprint.create_empty board_cells_width board_cells_height "empty"

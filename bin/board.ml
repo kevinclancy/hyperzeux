@@ -88,7 +88,7 @@ module Blueprint = struct
   let add_agent (bp : t) (agent_name : string) (agent_class_name : string) (texture_name : string) (pos : position) =
     assert (StaticObjectMap.get (!(get_static_object_ref bp pos)).name).traversable;
     assert (List.find_opt (fun agent_bp -> agent_bp.pos = pos) !(bp.agents) |> Option.is_none);
-    bp.agents := { agent_class_name ; agent_name; texture_name; pos} :: !(bp.agents)
+    bp.agents := { agent_class_name ; agent_name; texture_name; pos } :: !(bp.agents)
 
   let draw_prep (bp : t) : unit =
     let open Raylib in
@@ -254,17 +254,20 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
     for x = 0 to blueprint.width-1 do
       for y = 0 to blueprint.height-1 do
         let cell = Array.get (Array.get grid x) y in
-        let pos =
-          Vector2.create
+        let src_rect = rect 0.0 0.0 (Float.of_int Config.char_width) (Float.of_int @@ - Config.char_height) in
+        let dest_rect =
+          rect
             (Float.of_int @@ x * Config.char_width)
             (Float.of_int @@ board_height - ((y + 1) * Config.char_height))
+            (Float.of_int Config.char_width)
+            (Float.of_int Config.char_height)
         in
         match (!cell).agent with
         | Some _ ->
           () (* agents are drawn per-frame *)
         | None ->
           let texture = TextureMap.get (!cell).static_object.texture_name in
-          draw_texture_ex texture pos 0.0 1.0 (!cell).static_object_color;
+          draw_texture_pro texture src_rect dest_rect (Vector2.zero ()) 1.0 (!cell).static_object_color;
       done;
     done;
   end_texture_mode ();

@@ -1,15 +1,19 @@
 open Common
 
 type state =
-  (* [NewAgent script_run] where [script_run] may produce [Act] effects  *)
   | NewAgent of (t -> unit)
-  (* [RunningAgent cont] where [cont] may produce [Act] effects *)
+  (* [NewAgent script_run] where [script_run] may produce [Act] effects  *)
   | RunningAgent of (unit, Actions.action) Effect.Deep.continuation
+  (* [RunningAgent cont] where [cont] may produce [Act] effects *)
 
 and t = {
   name : string ;
   state : state ref ;
   pos : position ref ;
+  speed : float ref ;
+  (* speed in actions per second, should be at most 1.0 *)
+  action_meter : float ref ;
+  (* percentage of time spent waiting for next action *)
   texture : Raylib.Texture.t ref
 };;
 
@@ -25,27 +29,42 @@ let set_texture (agent : t) (texture : Raylib.Texture.t) : unit =
 let get_texture (agent : t) : Raylib.Texture.t =
   !(agent.texture);;
 
-let create (name : string) (script : t -> unit) (pos : position) (texture : Raylib.Texture.t) : t =
-  { name ; state = ref (NewAgent script) ; pos = ref pos ; texture = ref texture }
+let create (name : string) (script : t -> unit) (pos : position) ?speed (texture : Raylib.Texture.t) : t =
+  {
+    name ;
+    state = ref (NewAgent script) ;
+    pos = ref pos ;
+    texture = ref texture ;
+    speed = ref (Option.value speed ~default:0.5);
+    action_meter = ref 0.0
+  }
 
 let resume (agent : t) : Actions.action =
   let open Effect.Deep in
   let open Actions in
-  match !(agent.state) with
-  | RunningAgent k ->
-    continue k ()
-  | NewAgent run ->
-    match_with
-      run
-      agent
-      { retc = (fun _ -> failwith "agent script returned a value") ;
-        exnc = raise ;
-        effc = fun (type a) (eff : a Effect.t) ->
-          match eff with
-          | Act action ->
-            Some (function (k : (a, _) continuation) -> agent.state := RunningAgent k; action)
-          | _ ->
-            None }
+  agent.action_meter := !(agent.action_meter) +. (Raylib.get_frame_time ()) *. !(agent.speed) *. Config.speed;
+  if !(agent.action_meter) > 1.0 then
+    begin
+    agent.action_meter := !(agent.action_meter) -. (Float.round !(agent.action_meter));
+    match !(agent.state) with
+    | RunningAgent k ->
+      continue k ()
+    | NewAgent run ->
+      match_with
+        run
+        agent
+        { retc = (fun _ -> failwith "agent script returned a value") ;
+          exnc = raise ;
+          effc = fun (type a) (eff : a Effect.t) ->
+            match eff with
+            | Act action ->
+              Some (function (k : (a, _) continuation) -> agent.state := RunningAgent k; action)
+            | _ ->
+              None }
+    end
+  else
+    Actions.Wait
+
   (* let f () =
     match !(agent.state) with
     | RunningAgent k ->

@@ -32,7 +32,7 @@ let run (agent : Agent.t) : unit =
   done
 
 let create (name : string) (pos : position) : Agent.t =
-  Agent.create name run pos (TextureMap.get "person_south_recon.png")
+  Agent.create name run pos (TextureMap.get "person_south_recon.png") ~speed:0.5
 
 (* let resume () =
   let open Effect.Deep in

@@ -23,3 +23,4 @@ let editor_pan_speed = 10.0
 
 let grid_color = Raylib.Color.create 0 255 0 80
 
+let speed = 3.0

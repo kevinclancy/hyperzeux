@@ -1,12 +1,19 @@
 open Common
 open Config
 open Raylib
-
+open AgentClass_intf
 
 (* TODO: look into Raylib's built-in Camera module *)
 type camera = {
   position : Raylib.Vector2.t ;
   scale : float
+}
+
+type selector_state = {
+  draw : unit -> unit ;
+  next_obj : unit -> unit ;
+  prev_obj : unit -> unit ;
+  select_obj : unit -> unit ;
 }
 
 type edit_state = {
@@ -21,8 +28,20 @@ type game_state =
   | Editing of edit_state
   | Playing of Board.t
 
-(** Launches the display/update loop for a dialog to select a static object. *)
-let get_static_obj () : static_object option =
+(** [trim_zeros txt] Returns [txt] with all of the zero bytes trimmed off of the end *)
+let trim_zeros (txt : string) : string =
+  if String.length txt > 0 && ((Char.code txt.[String.length txt - 1]) = 0) then
+    String.sub txt 0 (String.length txt - 1)
+  else
+    txt
+
+(** [get_item search get_name get_texture] Returns a user-selected item, where
+[search text] produces a list of items whose names match [text],
+[get_name item] gets the name of [item], and [get_texture item] gets the texture of [item].
+*)
+let get_item (search : string -> 'a list)
+             (get_name : 'a -> string)
+             (get_texture : 'a -> Raylib.Texture.t) : 'a option =
   let open Raylib in
 
   begin_drawing ();
@@ -42,12 +61,95 @@ let get_static_obj () : static_object option =
         Raygui.set_style (Default `Text_size) 24;
         Raygui.text_box (rect 10.0 10.0 300.0 50.0) !edit_text true
       in
-      let txt =
-        if String.length txt > 0 && ((Char.code txt.[String.length txt - 1]) = 0) then
-          String.sub txt 0 (String.length txt - 1)
-        else
-          txt
+      let txt = trim_zeros txt in
+      if not @@ String.equal !edit_text txt then
+        begin
+          edit_text := txt;
+          obj_list := search txt;
+          if List.length (!obj_list) > 0 then
+            selected_index := Some 0
+          else
+            selected_index := None
+        end;
+      if is_key_pressed Key.Down then
+        begin
+        match !selected_index with
+        | Some m ->
+          selected_index := Some ((m + 1) mod (List.length !obj_list))
+        | None ->
+          ()
+        end;
+      if is_key_pressed Key.Up then
+        begin
+          match !selected_index with
+          | Some m  ->
+            selected_index := Some (if m = 0 then (List.length !obj_list - 1) else m - 1)
+          | None ->
+            ()
+        end;
+      if is_key_pressed Key.Enter && Option.is_some !selected_index then
+        begin
+          selection := Some (List.nth !obj_list (Option.get !selected_index))
+        end;
+      List.iteri (fun n obj ->
+        let m = Float.of_int @@ n in
+        let texture = get_texture obj in
+        let (but_x, but_y) = (10.0, (10.0 +. (m +. 1.0) *. 50.0)) in
+        let (but_w, but_h) = (300.0, 50.0) in
+        let button_rect = rect but_x but_y but_w but_h in
+        let tex_width = Float.of_int @@ Texture.width texture in
+        let tex_height = Float.of_int @@ Texture.height texture in
+        let dest_tex_rect =
+          rect
+            (but_x +. but_w -. (2.0 *. tex_width) -. 10.0)
+            (but_y +. 10.0)
+            (2.0 *. tex_width)
+            (2.0 *. tex_height)
+        in
+        begin
+        match !selected_index with
+        | Some m when m = n ->
+          Raygui.set_style (Button `Base_color_normal) 0xff00ffff
+        | _ ->
+          Raygui.set_style (Button `Base_color_normal) 0x0f0f0fff
+        end;
+        if Raygui.button button_rect (get_name obj) then
+          selection := Some obj;
+        Raylib.draw_texture_pro
+          texture
+          (rect 0.0 0.0 tex_width tex_height)
+          dest_tex_rect
+          (Vector2.zero ())
+          0.0
+          Color.white;
+      ) !obj_list;
+    end_drawing ();
+  done;
+  !selection
+
+(** Launches the display/update loop for a dialog to select a static object. *)
+let get_static_obj () : static_object option =
+  get_item StaticObjectMap.search (fun o -> o.name) (fun o -> TextureMap.get o.texture_name)
+  (* let open Raylib in
+
+  begin_drawing ();
+    (* Intentionally left empty to clear out input data,
+       i.e. prevent the textbox from starting out containing the letter of the key
+       that opened the static object selector *)
+  end_drawing ();
+
+  let edit_text = ref "" in
+  let obj_list = ref [] in
+  let selection = ref None in
+  let selected_index = ref None in
+  while (not @@ window_should_close ()) && (Option.is_none !selection) do
+    clear_background Color.gray;
+    begin_drawing ();
+      let txt, _ =
+        Raygui.set_style (Default `Text_size) 24;
+        Raygui.text_box (rect 10.0 10.0 300.0 50.0) !edit_text true
       in
+      let txt = trim_zeros txt in
       if not @@ String.equal !edit_text txt then
         begin
           edit_text := txt;
@@ -72,7 +174,7 @@ let get_static_obj () : static_object option =
             selected_index := Some (if m = 0 then (List.length !obj_list - 1) else m - 1)
           | None ->
             ()
-          end;
+        end;
       if is_key_pressed Key.Enter && Option.is_some !selected_index then
         begin
           selection := Some (List.nth !obj_list (Option.get !selected_index))
@@ -111,15 +213,7 @@ let get_static_obj () : static_object option =
       ) !obj_list;
     end_drawing ();
   done;
-  !selection
-
-let draw_object_selector (selected_obj : static_object) : unit =
-  let boundary_left = Config.(screen_width_f -. object_selector_width -. object_selector_margin) in
-  let boundary_top = Config.object_selector_margin in
-  let boundary = Config.(Rectangle.create boundary_left boundary_top object_selector_width object_selector_height) in
-  draw_rectangle_rec boundary Color.black
-  (* draw_text
-  draw_text_ex (Int.of_float @@ boundary_left +. 10.0) (Int.of_float @@ boundary_top +. 10.0) "Selected Object:" Color.white *)
+  !selection *)
 
 let () =
   Printexc.record_backtrace true;
@@ -138,7 +232,7 @@ let () =
   TextureMap.load "plant_1.png";
   TextureMap.load "plant_2.png";
 
-  AgentClassMap.add "patroller" (module Patroller);
+  AgentClassMap.add (module Patroller);
 
   StaticObjectMap.add { name = "empty" ; texture_name = "empty_cell.png" ; traversable = true };
   StaticObjectMap.add { name = "wall" ; texture_name = "solid_wall.png" ; traversable = false };
@@ -153,7 +247,7 @@ let () =
   Board.Blueprint.add_agent bp "marvin" "patroller" "person_south_recon.png" {x = 3 ; y = 3};
   let game_state =
     ref @@ Editing {
-      blueprint = bp;
+      blueprint = bp ;
       camera_pos = ref @@ Vector2.create 0.0 0.0 ;
       scale = ref 1.0 ;
       object_selector = ObjectSelector.create ()

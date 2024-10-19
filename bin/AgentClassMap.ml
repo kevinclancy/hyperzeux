@@ -1,12 +1,15 @@
 open AgentClass_intf
 
-open Common
+let map = OrdMap.create (fun (m : (module AgentClass)) -> let module M = (val m : AgentClass) in M.name)
 
-(** Maps each agent class name to the appropriate agent class *)
-let map : (module AgentClass) StringMap.t ref = ref StringMap.empty
+let add = OrdMap.add map
 
-let add (class_name : string) (agent_class : (module AgentClass)) =
-  map := StringMap.add class_name agent_class !map
+let get = OrdMap.get map
 
-let get (class_name : string) : (module AgentClass) =
-  StringMap.find class_name !map
+let get_first_elem () = OrdMap.get_first_elem map
+
+let get_next_elem = OrdMap.get_next_elem map
+
+let get_prev_elem = OrdMap.get_prev_elem map
+
+let search = OrdMap.search map

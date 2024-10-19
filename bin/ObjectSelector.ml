@@ -8,7 +8,7 @@ type t = {
 
 let create () : t =
   {
-    curr_object = ref @@ StaticObjectMap.(get_next_object (get_first_object ())) ;
+    curr_object = ref @@ StaticObjectMap.(get_next_elem (get_first_elem ())) ;
     font = Raylib.load_font "fonts/romulus.png" ;
     color = ref Raylib.Color.white
   }
@@ -23,10 +23,10 @@ let set_obj (selector : t) (obj : static_object) =
   selector.curr_object := obj
 
 let next_obj (selector : t) =
-  selector.curr_object := (StaticObjectMap.get_next_object !(selector.curr_object))
+  selector.curr_object := (StaticObjectMap.get_next_elem !(selector.curr_object))
 
 let prev_obj (selector : t) =
-    selector.curr_object := (StaticObjectMap.get_prev_object !(selector.curr_object))
+    selector.curr_object := (StaticObjectMap.get_next_elem !(selector.curr_object))
 
 let draw (selector : t) =
   let open Raylib in

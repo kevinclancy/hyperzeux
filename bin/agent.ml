@@ -17,6 +17,9 @@ and t = {
   texture : Raylib.Texture.t ref
 };;
 
+let get_name (agent : t) : string =
+  agent.name
+
 let set_pos (agent : t) (pos : position) =
   agent.pos := pos;;
 

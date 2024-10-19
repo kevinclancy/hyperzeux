@@ -31,8 +31,10 @@ let run (agent : Agent.t) : unit =
     walk_west agent;
   done
 
-let create (name : string) (pos : position) : Agent.t =
-  Agent.create name run pos (TextureMap.get "person_south_recon.png") ~speed:0.5
+let name = "patroller"
+
+let create (agent_name : string) (pos : position) : Agent.t =
+  Agent.create agent_name run pos (TextureMap.get "person_south_recon.png") ~speed:0.5
 
 (* let resume () =
   let open Effect.Deep in

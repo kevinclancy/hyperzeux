@@ -9,18 +9,24 @@ type camera = {
   scale : float
 }
 
+(* A selector for the current type of object we are placing in the
+   level. *)
 type selector_state = {
+  (* Draw the current selector *)
   draw : unit -> unit ;
-  next_obj : unit -> unit ;
-  prev_obj : unit -> unit ;
-  select_obj : unit -> unit ;
+  (* Press right arrow: select next item *)
+  next : unit -> unit ;
+  (* Press left arrow: select previous item *)
+  prev : unit -> unit ;
+  (* Instantiate the currently selected object at a given position *)
+  instantiate : Board.Blueprint.t -> position -> unit
 }
 
 type edit_state = {
   blueprint : Board.Blueprint.t ;
   camera_pos : Vector2.t ref ;
   scale : float ref ;
-  object_selector : ObjectSelector.t ;
+  selector : selector_state ref ;
 }
 
 type game_state =
@@ -28,192 +34,19 @@ type game_state =
   | Editing of edit_state
   | Playing of Board.t
 
-(** [trim_zeros txt] Returns [txt] with all of the zero bytes trimmed off of the end *)
-let trim_zeros (txt : string) : string =
-  if String.length txt > 0 && ((Char.code txt.[String.length txt - 1]) = 0) then
-    String.sub txt 0 (String.length txt - 1)
-  else
-    txt
-
-(** [get_item search get_name get_texture] Returns a user-selected item, where
-[search text] produces a list of items whose names match [text],
-[get_name item] gets the name of [item], and [get_texture item] gets the texture of [item].
-*)
-let get_item (search : string -> 'a list)
-             (get_name : 'a -> string)
-             (get_texture : 'a -> Raylib.Texture.t) : 'a option =
-  let open Raylib in
-
-  begin_drawing ();
-    (* Intentionally left empty to clear out input data,
-       i.e. prevent the textbox from starting out containing the letter of the key
-       that opened the static object selector *)
-  end_drawing ();
-
-  let edit_text = ref "" in
-  let obj_list = ref [] in
-  let selection = ref None in
-  let selected_index = ref None in
-  while (not @@ window_should_close ()) && (Option.is_none !selection) do
-    clear_background Color.gray;
-    begin_drawing ();
-      let txt, _ =
-        Raygui.set_style (Default `Text_size) 24;
-        Raygui.text_box (rect 10.0 10.0 300.0 50.0) !edit_text true
-      in
-      let txt = trim_zeros txt in
-      if not @@ String.equal !edit_text txt then
-        begin
-          edit_text := txt;
-          obj_list := search txt;
-          if List.length (!obj_list) > 0 then
-            selected_index := Some 0
-          else
-            selected_index := None
-        end;
-      if is_key_pressed Key.Down then
-        begin
-        match !selected_index with
-        | Some m ->
-          selected_index := Some ((m + 1) mod (List.length !obj_list))
-        | None ->
-          ()
-        end;
-      if is_key_pressed Key.Up then
-        begin
-          match !selected_index with
-          | Some m  ->
-            selected_index := Some (if m = 0 then (List.length !obj_list - 1) else m - 1)
-          | None ->
-            ()
-        end;
-      if is_key_pressed Key.Enter && Option.is_some !selected_index then
-        begin
-          selection := Some (List.nth !obj_list (Option.get !selected_index))
-        end;
-      List.iteri (fun n obj ->
-        let m = Float.of_int @@ n in
-        let texture = get_texture obj in
-        let (but_x, but_y) = (10.0, (10.0 +. (m +. 1.0) *. 50.0)) in
-        let (but_w, but_h) = (300.0, 50.0) in
-        let button_rect = rect but_x but_y but_w but_h in
-        let tex_width = Float.of_int @@ Texture.width texture in
-        let tex_height = Float.of_int @@ Texture.height texture in
-        let dest_tex_rect =
-          rect
-            (but_x +. but_w -. (2.0 *. tex_width) -. 10.0)
-            (but_y +. 10.0)
-            (2.0 *. tex_width)
-            (2.0 *. tex_height)
-        in
-        begin
-        match !selected_index with
-        | Some m when m = n ->
-          Raygui.set_style (Button `Base_color_normal) 0xff00ffff
-        | _ ->
-          Raygui.set_style (Button `Base_color_normal) 0x0f0f0fff
-        end;
-        if Raygui.button button_rect (get_name obj) then
-          selection := Some obj;
-        Raylib.draw_texture_pro
-          texture
-          (rect 0.0 0.0 tex_width tex_height)
-          dest_tex_rect
-          (Vector2.zero ())
-          0.0
-          Color.white;
-      ) !obj_list;
-    end_drawing ();
-  done;
-  !selection
+let () = Printexc.record_backtrace true
 
 (** Launches the display/update loop for a dialog to select a static object. *)
 let get_static_obj () : static_object option =
-  get_item StaticObjectMap.search (fun o -> o.name) (fun o -> TextureMap.get o.texture_name)
-  (* let open Raylib in
+  GuiTools.get_item StaticObjectMap.search (fun o -> o.name) (fun o -> TextureMap.get o.texture_name)
 
-  begin_drawing ();
-    (* Intentionally left empty to clear out input data,
-       i.e. prevent the textbox from starting out containing the letter of the key
-       that opened the static object selector *)
-  end_drawing ();
-
-  let edit_text = ref "" in
-  let obj_list = ref [] in
-  let selection = ref None in
-  let selected_index = ref None in
-  while (not @@ window_should_close ()) && (Option.is_none !selection) do
-    clear_background Color.gray;
-    begin_drawing ();
-      let txt, _ =
-        Raygui.set_style (Default `Text_size) 24;
-        Raygui.text_box (rect 10.0 10.0 300.0 50.0) !edit_text true
-      in
-      let txt = trim_zeros txt in
-      if not @@ String.equal !edit_text txt then
-        begin
-          edit_text := txt;
-          obj_list := StaticObjectMap.search txt;
-          if List.length (!obj_list) > 0 then
-            selected_index := Some 0
-          else
-            selected_index := None
-        end;
-      if is_key_pressed Key.Down then
-        begin
-        match !selected_index with
-        | Some m ->
-          selected_index := Some ((m + 1) mod (List.length !obj_list))
-        | None ->
-          ()
-        end;
-      if is_key_pressed Key.Up then
-        begin
-          match !selected_index with
-          | Some m  ->
-            selected_index := Some (if m = 0 then (List.length !obj_list - 1) else m - 1)
-          | None ->
-            ()
-        end;
-      if is_key_pressed Key.Enter && Option.is_some !selected_index then
-        begin
-          selection := Some (List.nth !obj_list (Option.get !selected_index))
-        end;
-      List.iteri (fun n obj ->
-        let m = Float.of_int @@ n in
-        let texture = TextureMap.get obj.texture_name in
-        let (but_x, but_y) = (10.0, (10.0 +. (m +. 1.0) *. 50.0)) in
-        let (but_w, but_h) = (300.0, 50.0) in
-        let button_rect = rect but_x but_y but_w but_h in
-        let tex_width = Float.of_int @@ Texture.width texture in
-        let tex_height = Float.of_int @@ Texture.height texture in
-        let dest_tex_rect =
-          rect
-            (but_x +. but_w -. (2.0 *. tex_width) -. 10.0)
-            (but_y +. 10.0)
-            (2.0 *. tex_width)
-            (2.0 *. tex_height)
-        in
-        begin
-        match !selected_index with
-        | Some m when m = n ->
-          Raygui.set_style (Button `Base_color_normal) 0xff00ffff
-        | _ ->
-          Raygui.set_style (Button `Base_color_normal) 0x0f0f0fff
-        end;
-        if Raygui.button button_rect obj.name then
-          selection := Some obj;
-        Raylib.draw_texture_pro
-          texture
-          (rect 0.0 0.0 tex_width tex_height)
-          dest_tex_rect
-          (Vector2.zero ())
-          0.0
-          Color.white;
-      ) !obj_list;
-    end_drawing ();
-  done;
-  !selection *)
+let get_agent_class () : (module AgentClass) option =
+  GuiTools.get_item
+    AgentClassMap.search
+    (fun (c : (module AgentClass)) ->
+      let module M = (val c : AgentClass) in M.name)
+    (fun (c : (module AgentClass)) ->
+      let module M = (val c : AgentClass) in TextureMap.get M.preview_texture_name)
 
 let () =
   Printexc.record_backtrace true;
@@ -240,17 +73,43 @@ let () =
   StaticObjectMap.add { name = "plant_1" ; texture_name = "plant_1.png" ; traversable = true };
   StaticObjectMap.add { name = "plant_2" ; texture_name = "plant_2.png" ; traversable = true };
 
+  let object_selector = ObjectSelector.create () in
+
+  let agent_selector = AgentClassSelector.create () in
+
+  (** Begin using the static object selector *)
+  let object_selector_state : selector_state =
+    let open ObjectSelector in
+    {
+      draw = (fun () -> draw object_selector) ;
+      next = (fun () -> next_obj object_selector) ;
+      prev = (fun () -> prev_obj object_selector) ;
+      instantiate = instantiate object_selector ;
+    }
+  in
+
+  let agent_selector_state : selector_state =
+    let open AgentClassSelector in
+    {
+      draw = (fun () -> draw agent_selector) ;
+      next = (fun () -> next_obj agent_selector) ;
+      prev = (fun () -> prev_obj agent_selector) ;
+      instantiate = instantiate agent_selector
+    }
+  in
+
   let bp =
     Board.Blueprint.create_empty board_cells_width board_cells_height "empty"
   in
   Board.Blueprint.set_static_object bp {x = 1 ; y = 1} "wall" Color.gold;
   Board.Blueprint.add_agent bp "marvin" "patroller" "person_south_recon.png" {x = 3 ; y = 3};
+  Board.Blueprint.add_agent bp "fred" "patroller" "person_south_recon.png" {x = 3 ; y = 4};
   let game_state =
     ref @@ Editing {
       blueprint = bp ;
       camera_pos = ref @@ Vector2.create 0.0 0.0 ;
       scale = ref 1.0 ;
-      object_selector = ObjectSelector.create ()
+      selector = ref object_selector_state
     }
   in
   while not (window_should_close ()) do
@@ -261,7 +120,7 @@ let () =
       begin_drawing ();
         Board.draw b (Vector2.zero ()) 4.0;
       end_drawing ();
-    | Editing { blueprint ; camera_pos ; scale ; object_selector } ->
+    | Editing { blueprint ; camera_pos ; scale ; selector } ->
       let dt = Raylib.get_frame_time () in
       let mouse_delta = Raylib.get_mouse_delta () in
       if is_mouse_button_down MouseButton.Right then
@@ -273,30 +132,41 @@ let () =
       scale := !scale +. (Config.editor_zoom_speed *. wheel_delta *. dt);
 
       if Raylib.is_key_pressed Key.Comma then
-        ObjectSelector.prev_obj object_selector
+        (!selector).prev ()
       else if is_key_pressed Key.Period then
-        ObjectSelector.next_obj object_selector
+        (!selector).next ()
       else if is_key_pressed Key.P then
         game_state := Playing (Board.create_from_blueprint blueprint)
-      else if (is_key_pressed Key.O) then
+      else if (is_key_pressed Key.O) && (is_key_down Key.Left_control) then
         begin
           let opt_obj = get_static_obj () in
           match opt_obj with
           | Some obj ->
+            selector := object_selector_state;
             ObjectSelector.set_obj object_selector obj
+          | None ->
+            ()
+        end
+      else if (is_key_pressed Key.A) && (is_key_down Key.Left_control) then
+        begin
+          let opt_agent_class = get_agent_class () in
+          match opt_agent_class with
+          | Some agent_class ->
+            selector := agent_selector_state;
+            AgentClassSelector.set_obj agent_selector agent_class;
           | None ->
             ()
         end;
 
-      if Raylib.is_mouse_button_down MouseButton.Left then
+      if Raylib.is_mouse_button_pressed MouseButton.Left then
         (* TODO: compute the cell position here *)
         let mouse_pos = Raylib.get_mouse_position () in
         let x = Int.of_float @@ ((Vector2.x mouse_pos) +. (Vector2.x !camera_pos)) /. (!scale *. (Float.of_int @@ Config.char_width)) in
         let y = Int.of_float @@ ((Vector2.y mouse_pos) +. (Vector2.y !camera_pos)) /. (!scale *. (Float.of_int @@ Config.char_height)) in
         if x >= 0 && y >= 0 && x < Config.board_cells_width && y < Config.board_cells_height then
-          let name = ObjectSelector.get_curr_name object_selector in
-          let color = ObjectSelector.get_curr_color object_selector in
-          Board.Blueprint.set_static_object blueprint {x = x; y = y} name color
+          begin
+            (!selector).instantiate blueprint {x ; y};
+          end
         else
           ();
       else
@@ -307,7 +177,7 @@ let () =
       begin_drawing ();
         Board.Blueprint.draw bp !camera_pos !scale;
         (* let curr_obj_texture = TextureMap.get curr_object.texture_name in *)
-        ObjectSelector.draw object_selector ;
+        (!selector).draw () ;
         (* draw_texture_ex
           curr_obj_texture
           (Vector2.create Config.(Float.of_int @@ screen_width - char_width - 50) 50.0)

@@ -85,9 +85,13 @@ module Blueprint = struct
       draw_texture_ex texture (Vector2.create x y) 0.0 1.0 color;
     end_texture_mode ()
 
+
+  let remove_agent_at (bp : t) (pos : position) : unit =
+    bp.agents := List.filter (fun agent_bp -> agent_bp.pos <> pos) !(bp.agents)
+
   let add_agent (bp : t) (agent_name : string) (agent_class_name : string) (texture_name : string) (pos : position) =
     assert (StaticObjectMap.get (!(get_static_object_ref bp pos)).name).traversable;
-    assert (List.find_opt (fun agent_bp -> agent_bp.pos = pos) !(bp.agents) |> Option.is_none);
+    remove_agent_at bp pos;
     bp.agents := { agent_class_name ; agent_name; texture_name; pos } :: !(bp.agents)
 
   let draw_prep (bp : t) : unit =

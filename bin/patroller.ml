@@ -33,6 +33,10 @@ let run (agent : Agent.t) : unit =
 
 let name = "patroller"
 
+let preview_texture_name = "person_south_recon.png"
+
+let preview_color = Raylib.Color.white
+
 let create (agent_name : string) (pos : position) : Agent.t =
   Agent.create agent_name run pos (TextureMap.get "person_south_recon.png") ~speed:0.5
 

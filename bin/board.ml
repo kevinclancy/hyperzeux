@@ -6,6 +6,8 @@ module Blueprint = struct
     agent_class_name : string ;
     (* A unique name for the agent *)
     agent_name : string ;
+    (* The starting color of this agent *)
+    color : Raylib.Color.t ;
     (* The starting position of the agent *)
     pos : position ;
     (* The name of the texture used to represent this agent in the level editor *)
@@ -26,7 +28,7 @@ module Blueprint = struct
         for the static object at position (x,y) *)
     static_objects : static_object_blueprint ref array array;
     (* For each agent in the board's starting state. *)
-    agents : agent_blueprint list ref;
+    agents : (agent_blueprint StringMap.t) ref;
     (* A texture depicting the full static object map. *)
     static_bg_texture : Raylib.RenderTexture.t ;
     (* Texture to render to screen *)
@@ -62,7 +64,7 @@ module Blueprint = struct
         Array.init
           width
           (fun _ -> Array.init height (fun _ -> ref { name = empty_object_key ; color = Color.white }));
-      agents = ref [] ;
+      agents = ref StringMap.empty ;
       static_bg_texture ;
       render_texture =
         Raylib.load_render_texture
@@ -87,28 +89,32 @@ module Blueprint = struct
 
 
   let remove_agent_at (bp : t) (pos : position) : unit =
-    bp.agents := List.filter (fun agent_bp -> agent_bp.pos <> pos) !(bp.agents)
+    bp.agents := StringMap.filter (fun _ agent_bp -> agent_bp.pos <> pos) !(bp.agents)
 
-  let add_agent (bp : t) (agent_name : string) (agent_class_name : string) (texture_name : string) (pos : position) =
+  let add_agent (bp : t) (agent_name : string) (color : Raylib.Color.t) (agent_class_name : string) (texture_name : string) (pos : position) =
     assert (StaticObjectMap.get (!(get_static_object_ref bp pos)).name).traversable;
+    assert (not @@ StringMap.mem agent_name !(bp.agents));
     remove_agent_at bp pos;
-    bp.agents := { agent_class_name ; agent_name; texture_name; pos } :: !(bp.agents)
+    bp.agents := StringMap.add agent_name { agent_class_name ; agent_name; color; texture_name; pos } !(bp.agents)
+
+  let contains_agent_name (bp : t) (agent_name : string) : bool =
+    StringMap.mem agent_name !(bp.agents)
 
   let draw_prep (bp : t) : unit =
     let open Raylib in
     begin_texture_mode bp.render_texture;
-      let draw_agent (agent_blueprint : agent_blueprint) : unit =
+      let draw_agent (_ : string) (agent_blueprint : agent_blueprint) : unit =
         let { x = x ; y = y } = agent_blueprint.pos in
         let pos = Vector2.create (Float.of_int @@ x * Config.char_width) (Float.of_int @@ y * Config.char_height) in
         let texture = TextureMap.get agent_blueprint.texture_name in
-        draw_texture_ex texture pos 0.0 1.0 Color.white;
+        draw_texture_ex texture pos 0.0 1.0 agent_blueprint.color;
       in
       let width = (Float.of_int Config.board_pixels_width) in
       let height = (Float.of_int Config.board_pixels_height) in
       let src = Rectangle.create 0.0 0.0 width (-. height) in
       let dest = Rectangle.create 0.0 0.0 width height in
       draw_texture_pro (RenderTexture.texture bp.static_bg_texture) src dest (Vector2.create 0.0 0.0) 0.0 Color.white;
-      List.iter draw_agent !(bp.agents);
+      StringMap.iter draw_agent !(bp.agents);
       draw_texture_pro (RenderTexture.texture bp.grid_texture) src dest (Vector2.zero ()) 0.0 Color.white;
     end_texture_mode ()
 
@@ -123,8 +129,6 @@ module Blueprint = struct
     draw_texture_pro (RenderTexture.texture bp.render_texture) src dest pos 0.0 Color.white;
 end
 
-module AgentSet = Set.Make(Agent)
-
 type grid_cell = {
   static_object : static_object ;
   static_object_color : Raylib.Color.t ;
@@ -133,12 +137,15 @@ type grid_cell = {
 
 type t = {
   grid : grid_cell ref array array ;
-  (* List of all agents *)
-  agents : AgentSet.t ref;
-  (* A texture depicting the full static object map *)
+
+  agents : (Agent.t StringMap.t) ref;
+  (** Maps each agent name to agent *)
+
   static_texture : Raylib.RenderTexture.t ;
-  (* Texture to render to screen *)
+  (** A texture depicting the full static object map *)
+
   render_texture : Raylib.RenderTexture.t ;
+  (** Texture to render to screen *)
 }
 
 let create_empty (width : int)
@@ -160,7 +167,7 @@ let create_empty (width : int)
           ref { static_object = empty_object ; static_object_color = Raylib.Color.white ; agent = None }
         )
       );
-    agents = ref AgentSet.empty;
+    agents = ref StringMap.empty;
     static_texture ;
     render_texture =
       load_render_texture
@@ -185,19 +192,19 @@ let is_occupied (board : t) (pos : position) =
 
 let add_agent (board : t) (agent : Agent.t) : unit =
   assert (not @@ is_occupied board (Agent.get_pos agent));
-  assert (not @@ AgentSet.mem agent !(board.agents));
-  board.agents := AgentSet.add agent !(board.agents)
+  assert (not @@ StringMap.mem (Agent.get_name agent) !(board.agents));
+  board.agents := StringMap.add (Agent.get_name agent) agent !(board.agents)
 
 let prep_draw (board : t) : unit =
   let open Raylib in
   begin_texture_mode board.render_texture;
-    let draw_agent (agent : Agent.t) : unit =
+    let draw_agent (_ : string) (agent : Agent.t) : unit =
       let {x;y} = Agent.get_pos agent in
       let pos = Vector2.create (Float.of_int @@ x * Config.char_width) (Float.of_int @@ y * Config.char_height) in
-      draw_texture_ex (Agent.get_texture agent) pos 0.0 1.0 Color.white;
+      draw_texture_ex (Agent.get_texture agent) pos 0.0 1.0 (Agent.get_color agent);
     in
     draw_texture_ex (RenderTexture.texture board.static_texture) (Vector2.create 0.0 0.0) 0.0 1.0 Color.white;
-    AgentSet.iter draw_agent !(board.agents);
+    StringMap.iter draw_agent !(board.agents);
   end_texture_mode ()
 
 let draw (board : t) (pos : Raylib.Vector2.t) (scale : float) : unit =
@@ -210,7 +217,9 @@ let draw (board : t) (pos : Raylib.Vector2.t) (scale : float) : unit =
   draw_texture_pro (RenderTexture.texture board.render_texture) src dest pos 0.0 Color.white
 
 let update (board : t) : unit =
-  let update_agent (agent : Agent.t) : unit =
+  let open Raylib in
+  let update_agent (_ : string) (agent : Agent.t) : unit =
+    Agent.update_input agent;
     match Agent.resume agent with
     | Actions.Walk (delta_x, delta_y) ->
       let pos = Agent.get_pos agent in
@@ -226,7 +235,7 @@ let update (board : t) : unit =
     | Actions.Wait ->
       ()
   in
-  AgentSet.iter update_agent !(board.agents)
+  StringMap.iter update_agent !(board.agents)
 
 let create_from_blueprint (blueprint : Blueprint.t) : t =
   let open Raylib in
@@ -241,15 +250,15 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
   let create_agent (agent_bp : Blueprint.agent_blueprint) : Agent.t =
     let open AgentClass_intf in
     let module ThisAgentClass = (val (AgentClassMap.get agent_bp.agent_class_name) : AgentClass) in
-    ThisAgentClass.create agent_bp.agent_name agent_bp.pos
+    ThisAgentClass.create agent_bp.agent_name agent_bp.pos agent_bp.color
   in
-  let agents = List.map create_agent !(blueprint.agents) in
-  let add_agent (agent : Agent.t) : unit =
+  let agents = StringMap.map create_agent !(blueprint.agents) in
+  let add_agent (_ : string) (agent : Agent.t) : unit =
     let {x;y} = Agent.get_pos agent in
     let cell = Array.get (Array.get grid x) y in
     cell := { !(cell) with agent = Some agent }
   in
-  List.iter add_agent agents;
+  StringMap.iter add_agent agents;
   let board_width = blueprint.width * Config.char_width in
   let board_height = blueprint.height * Config.char_height in
   let static_texture = load_render_texture board_width board_height in
@@ -277,7 +286,7 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
   end_texture_mode ();
   {
     grid;
-    agents = ref (AgentSet.of_list agents);
+    agents = ref agents;
     static_texture;
     render_texture = load_render_texture board_width board_height
   }

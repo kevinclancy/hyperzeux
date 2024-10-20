@@ -16,29 +16,34 @@ let walk_west (agent : Agent.t) =
   Agent.set_texture agent (TextureMap.get "person_west_recon.png");
   Actions.walk_west ()
 
-let run (agent : Agent.t) : unit =
-  while true do
-    walk_north agent;
-    walk_north agent;
-
-    walk_east agent;
-    walk_east agent;
-
-    walk_south agent;
-    walk_south agent;
-
-    walk_west agent;
-    walk_west agent;
-  done
-
 let name = "patroller"
 
 let preview_texture_name = "person_south_recon.png"
 
 let preview_color = Raylib.Color.white
 
-let create (agent_name : string) (pos : position) : Agent.t =
-  Agent.create agent_name run pos (TextureMap.get "person_south_recon.png") ~speed:0.5
+let create (agent_name : string) (pos : position) (color : Raylib.Color.t) : Agent.t =
+  let scripts = {
+    Agent.empty_scripts with
+      (* Initially start patrolling in a 2x2 square *)
+      initial = Some (function (me : Agent.t) ->
+        while true do
+          walk_north me;
+          walk_north me;
+
+          walk_east me;
+          walk_east me;
+
+          walk_south me;
+          walk_south me;
+
+          walk_west me;
+          walk_west me;
+        done
+      ) ;
+  }
+  in
+  Agent.create agent_name scripts pos color (TextureMap.get "person_south_recon.png") ~speed:0.3
 
 (* let resume () =
   let open Effect.Deep in

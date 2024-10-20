@@ -15,8 +15,12 @@ module Blueprint : sig
     (** [set_static_object_key blueprint pos key color] Set position [pos] to static object key
         [key] and color [color] *)
 
-    val add_agent : t -> string -> string -> string -> position -> unit
-    (** [set_agent blueprint agent_name agent_class_name texture_name pos] *)
+    val add_agent : t -> string -> Raylib.Color.t -> string -> string -> position -> unit
+    (** [set_agent blueprint agent_name color agent_class_name texture_name pos] *)
+
+    val contains_agent_name : t -> string -> bool
+    (** [contains_agent_name name] returns true iff this board blueprint
+        contains a blueprint for an agent named [name] *)
 
     val draw_prep : t -> unit
     (** [draw_prep blueprint] Draws board components to a render texture in preparation for drawing *)

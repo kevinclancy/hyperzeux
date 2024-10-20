@@ -66,6 +66,7 @@ let () =
   TextureMap.load "plant_2.png";
 
   AgentClassMap.add (module Patroller);
+  AgentClassMap.add (module Player);
 
   StaticObjectMap.add { name = "empty" ; texture_name = "empty_cell.png" ; traversable = true };
   StaticObjectMap.add { name = "wall" ; texture_name = "solid_wall.png" ; traversable = false };
@@ -101,9 +102,6 @@ let () =
   let bp =
     Board.Blueprint.create_empty board_cells_width board_cells_height "empty"
   in
-  Board.Blueprint.set_static_object bp {x = 1 ; y = 1} "wall" Color.gold;
-  Board.Blueprint.add_agent bp "marvin" "patroller" "person_south_recon.png" {x = 3 ; y = 3};
-  Board.Blueprint.add_agent bp "fred" "patroller" "person_south_recon.png" {x = 3 ; y = 4};
   let game_state =
     ref @@ Editing {
       blueprint = bp ;

@@ -18,9 +18,14 @@ let object_selector_height = 280.0
 (** Distance from object selector to window edge *)
 let object_selector_margin = 10.0
 
+let agent_selector_width = 350.0
+let agent_selector_height = 280.0
+(** Distance from agent selector to window edge *)
+let agent_selector_margin = 10.0
+
 let editor_zoom_speed = 1.0
 let editor_pan_speed = 10.0
 
 let grid_color = Raylib.Color.create 0 255 0 80
 
-let speed = 3.0
+let speed = 10.0

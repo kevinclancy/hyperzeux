@@ -10,4 +10,7 @@ val walk_east : unit -> unit
 val walk_south : unit -> unit
 val walk_west : unit -> unit
 
+val wait : int -> unit
+(** [wait n] waits for [n] ticks *)
+
 val print_action : action -> unit

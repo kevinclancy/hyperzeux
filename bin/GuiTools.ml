@@ -7,6 +7,28 @@ let trim_zeros (txt : string) : string =
   else
     txt
 
+let get_new_name (is_forbidden : string -> bool) : string option =
+  let open Raylib in
+  let edit_text = ref "" in
+  let choice : string option ref = ref None in
+  while (not @@ window_should_close ()) && (Option.is_none !choice) do
+    clear_background Color.gray;
+    begin_drawing ();
+      Raygui.label (Rectangle.create 10.0 10.0 300.0 14.0) "Enter new agent name:";
+      edit_text :=
+        begin
+          Raygui.set_style (Default `Text_size) 24;
+          if is_forbidden !edit_text then
+              Raylib.draw_text "agent name already used!" 10 120 24 Raylib.Color.red;
+          let txt,_ = Raygui.text_box (rect 10.0 30.0 300.0 80.0) !edit_text true in
+          trim_zeros txt
+        end;
+      if (is_key_pressed Key.Enter) && (not @@ is_forbidden !edit_text) && (not @@ String.equal !edit_text "") then
+        choice := Some !edit_text;
+    end_drawing ()
+  done;
+  !choice
+
 (** [get_item search get_name get_texture] Returns a user-selected item, where
 [search text] produces a list of items whose names match [text],
 [get_name item] gets the name of [item], and [get_texture item] gets the texture of [item].

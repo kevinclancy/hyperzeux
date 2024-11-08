@@ -7,6 +7,41 @@ let trim_zeros (txt : string) : string =
   else
     txt
 
+let get_input_string (description : string) : string option =
+(** [get_input_string description]
+
+Displays an interactive textbox which receives a string from user input.
+
+## Parameters
+
+* [description] - A label above the textbox, describing the string requested from the user
+
+## Returns
+
+* Some(str) where [str] is the user's input string if users exits with the Enter key
+
+* None if the user exits with the Escape key
+
+*)
+  let open Raylib in
+  let edit_text = ref "" in
+  let choice : string option ref = ref None in
+  while (not @@ window_should_close ()) && (Option.is_none !choice) do
+    clear_background Color.gray;
+    begin_drawing ();
+      Raygui.label (Rectangle.create 10.0 10.0 300.0 14.0) description;
+      edit_text :=
+      begin
+        Raygui.set_style (Default `Text_size) 24;
+        let txt,_ = Raygui.text_box (rect 10.0 30.0 300.0 80.0) !edit_text true in
+        trim_zeros txt;
+      end;
+      if (is_key_pressed Key.Enter) then
+        choice := Some !edit_text;
+    end_drawing ()
+  done;
+  !choice
+
 let get_new_name (is_forbidden : string -> bool) : string option =
   let open Raylib in
   let edit_text = ref "" in
@@ -29,7 +64,9 @@ let get_new_name (is_forbidden : string -> bool) : string option =
   done;
   !choice
 
-(** [get_item search get_name get_texture] Returns a user-selected item, where
+(** [get_item search get_name get_texture]
+
+Returns a user-selected item, where
 [search text] produces a list of items whose names match [text],
 [get_name item] gets the name of [item], and [get_texture item] gets the texture of [item].
 *)

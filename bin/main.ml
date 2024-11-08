@@ -9,17 +9,29 @@ type camera = {
   scale : float
 }
 
-(* A selector for the current type of object we are placing in the
-   level. *)
+type selector_name =
+  | AgentSelector
+  | StaticObjectSelector
+
+
 type selector_state = {
-  (* Draw the current selector *)
+  (** A selector for the current type of object we are placing in the
+   level. *)
+
+  name : selector_name ;
+  (** The name of the current selector *)
+
   draw : unit -> unit ;
-  (* Press right arrow: select next item *)
+  (** Draw the current selector *)
+
   next : unit -> unit ;
-  (* Press left arrow: select previous item *)
+  (** Press right arrow: select next item *)
+
   prev : unit -> unit ;
-  (* Instantiate the currently selected object at a given position *)
+  (** Press left arrow: select previous item *)
+
   instantiate : Board.Blueprint.t -> position -> unit
+  (** Instantiate the currently selected object at a given position *)
 }
 
 type edit_state = {
@@ -47,6 +59,14 @@ let get_agent_class () : (module AgentClass) option =
       let module M = (val c : AgentClass) in M.name)
     (fun (c : (module AgentClass)) ->
       let module M = (val c : AgentClass) in TextureMap.get M.preview_texture_name)
+
+let save_board (bp : Board.Blueprint.t) : unit =
+  let opt_filename = GuiTools.get_input_string "Enter filename to save board to" in
+  match opt_filename with
+  | Some(filename) ->
+    Board.Blueprint.serialize bp (String.concat "/" [Filename.current_dir_name ; filename])
+  | None ->
+    ()
 
 let () =
   Printexc.record_backtrace true;
@@ -82,6 +102,7 @@ let () =
   let object_selector_state : selector_state =
     let open ObjectSelector in
     {
+      name = StaticObjectSelector ;
       draw = (fun () -> draw object_selector) ;
       next = (fun () -> next_obj object_selector) ;
       prev = (fun () -> prev_obj object_selector) ;
@@ -92,6 +113,7 @@ let () =
   let agent_selector_state : selector_state =
     let open AgentClassSelector in
     {
+      name = AgentSelector ;
       draw = (fun () -> draw agent_selector) ;
       next = (fun () -> next_obj agent_selector) ;
       prev = (fun () -> prev_obj agent_selector) ;
@@ -154,21 +176,20 @@ let () =
             AgentClassSelector.set_obj agent_selector agent_class;
           | None ->
             ()
-        end;
+        end
+      else if (is_key_pressed Key.S) && (is_key_down Key.Left_alt) then
+        save_board blueprint;
 
-      if Raylib.is_mouse_button_pressed MouseButton.Left then
+      if (Raylib.is_mouse_button_pressed MouseButton.Left && (!selector).name = AgentSelector) ||
+         (Raylib.is_mouse_button_down MouseButton.Left && (!selector).name = StaticObjectSelector) then
         (* TODO: compute the cell position here *)
-        let mouse_pos = Raylib.get_mouse_position () in
-        let x = Int.of_float @@ ((Vector2.x mouse_pos) +. (Vector2.x !camera_pos)) /. (!scale *. (Float.of_int @@ Config.char_width)) in
-        let y = Int.of_float @@ ((Vector2.y mouse_pos) +. (Vector2.y !camera_pos)) /. (!scale *. (Float.of_int @@ Config.char_height)) in
-        if x >= 0 && y >= 0 && x < Config.board_cells_width && y < Config.board_cells_height then
-          begin
-            (!selector).instantiate blueprint {x ; y};
-          end
-        else
-          ();
-      else
-        ();
+        begin
+          let mouse_pos = Raylib.get_mouse_position () in
+          let x = Int.of_float @@ ((Vector2.x mouse_pos) +. (Vector2.x !camera_pos)) /. (!scale *. (Float.of_int @@ Config.char_width)) in
+          let y = Int.of_float @@ ((Vector2.y mouse_pos) +. (Vector2.y !camera_pos)) /. (!scale *. (Float.of_int @@ Config.char_height)) in
+          if x >= 0 && y >= 0 && x < Config.board_cells_width && y < Config.board_cells_height then
+              (!selector).instantiate blueprint {x ; y};
+        end;
 
       Board.Blueprint.draw_prep bp;
 

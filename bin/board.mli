@@ -10,7 +10,6 @@ module Blueprint : sig
         of [width] by [height] cells, filling each cell with the static object whose index is
         [empty_obj_key]. *)
 
-
     val set_static_object : t -> position -> string -> Raylib.Color.t -> unit
     (** [set_static_object_key blueprint pos key color] Set position [pos] to static object key
         [key] and color [color] *)
@@ -27,6 +26,9 @@ module Blueprint : sig
 
     val draw : t -> Raylib.Vector2.t -> float -> unit
     (** [draw blueprint pos scale] *)
+
+    val serialize : t -> string -> unit
+    (** [serialize blueprint filename] Saves the board blueprint to the file labeled filename *)
 end
 
 type t

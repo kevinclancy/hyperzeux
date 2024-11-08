@@ -2,16 +2,16 @@ open Common
 
 module Blueprint = struct
   type agent_blueprint = {
-    (* A key in the AgentClassMap identifying the AgentClass to use *)
     agent_class_name : string ;
-    (* A unique name for the agent *)
+    (** A key in the AgentClassMap identifying the AgentClass to use *)
     agent_name : string ;
-    (* The starting color of this agent *)
+    (** A unique name for the agent *)
     color : Raylib.Color.t ;
-    (* The starting position of the agent *)
+    (** The starting color of this agent *)
     pos : position ;
-    (* The name of the texture used to represent this agent in the level editor *)
+    (** The starting position of the agent *)
     texture_name : string
+    (** The name of the texture used to represent this agent in the level editor *)
   }
 
   type static_object_blueprint = {
@@ -20,22 +20,22 @@ module Blueprint = struct
   }
 
   type t = {
-    (** Grid cells of board in width *)
     width : int ;
-    (** Height of board in width *)
+    (** Grid cells of board in width *)
     height : int ;
-    (* static_objects[x][y] is a key of the StaticObjectMap
-        for the static object at position (x,y) *)
+    (** Height of board in width *)
     static_objects : static_object_blueprint ref array array;
-    (* For each agent in the board's starting state. *)
+    (** static_objects[x][y] is a key of the StaticObjectMap
+        for the static object at position (x,y) *)
     agents : (agent_blueprint StringMap.t) ref;
-    (* A texture depicting the full static object map. *)
+    (** For each agent in the board's starting state, a blueprint. *)
     static_bg_texture : Raylib.RenderTexture.t ;
-    (* Texture to render to screen *)
+    (** A texture depicting the full static object map. *)
     render_texture : Raylib.RenderTexture.t ;
-    (* A translucent grid to optionally render over the level editor, letting the user
-       see the cell boundaries. *)
+    (** Texture to render to screen *)
     grid_texture : Raylib.RenderTexture.t
+    (** A translucent grid to optionally render over the level editor, letting the user
+       see the cell boundaries. *)
   }
 
   let create_empty (width : int) (height : int) (empty_object_key : string) : t =
@@ -87,7 +87,6 @@ module Blueprint = struct
       draw_texture_ex texture (Vector2.create x y) 0.0 1.0 color;
     end_texture_mode ()
 
-
   let remove_agent_at (bp : t) (pos : position) : unit =
     bp.agents := StringMap.filter (fun _ agent_bp -> agent_bp.pos <> pos) !(bp.agents)
 
@@ -99,6 +98,91 @@ module Blueprint = struct
 
   let contains_agent_name (bp : t) (agent_name : string) : bool =
     StringMap.mem agent_name !(bp.agents)
+
+  let output_binary_string (chan : out_channel) (s : string) : unit =
+    output_binary_int chan (String.length s);
+    output_bytes chan (String.to_bytes s)
+
+  let input_binary_string (chan : in_channel) : string =
+    let len = input_binary_int chan in
+    really_input_string chan len
+
+  let output_static_obj (chan : out_channel) (obj : static_object_blueprint) : unit =
+    output_binary_string chan obj.name;
+    output_binary_int chan (Raylib.Color.r obj.color);
+    output_binary_int chan (Raylib.Color.g obj.color);
+    output_binary_int chan (Raylib.Color.b obj.color);
+    output_binary_int chan (Raylib.Color.a obj.color)
+
+  let input_static_obj (chan : in_channel) : static_object_blueprint =
+    let name = input_binary_string chan in
+    let r = input_binary_int chan in
+    let g = input_binary_int chan in
+    let b = input_binary_int chan in
+    let a = input_binary_int chan in
+    { name ; color = Raylib.Color.create r g b a }
+
+  let output_agent (chan : out_channel) (agent_name : string) (agent : agent_blueprint) : unit =
+    output_binary_string chan agent.agent_class_name;
+    output_binary_string chan agent.agent_name;
+    output_binary_int chan agent.pos.x;
+    output_binary_int chan agent.pos.y;
+    output_binary_string chan agent.texture_name;
+    output_binary_int chan (Raylib.Color.r agent.color);
+    output_binary_int chan (Raylib.Color.g agent.color);
+    output_binary_int chan (Raylib.Color.b agent.color);
+    output_binary_int chan (Raylib.Color.a agent.color)
+
+  let input_agent (chan : in_channel) : agent_blueprint =
+    let agent_class_name = input_binary_string chan in
+    let agent_name = input_binary_string chan in
+    let x = input_binary_int chan in
+    let y = input_binary_int chan in
+    let texture_name = input_binary_string chan in
+    let r = input_binary_int chan in
+    let g = input_binary_int chan in
+    let b = input_binary_int chan in
+    let a = input_binary_int chan in
+    {
+      agent_class_name ;
+      agent_name ;
+      color = Raylib.Color.create r g b a;
+      pos = {x;y} ;
+      texture_name
+    }
+
+  let serialize (bp : t) (filename : string) : unit =
+    let chan = open_out_bin filename in
+    output_binary_int chan bp.width;
+    output_binary_int chan bp.height;
+    for x = 0 to bp.width - 1 do
+      for y = 0 to bp.height - 1 do
+        output_static_obj chan !(get_static_object_ref bp {x; y})
+      done;
+    done;
+    output_binary_int chan (StringMap.cardinal !(bp.agents));
+    StringMap.iter (output_agent chan) !(bp.agents);
+    close_out chan
+
+  let deserialize (filename : string) : t =
+    let chan = open_in_bin filename in
+    let width = input_binary_int chan in
+    let height = input_binary_int chan in
+    let result_bp = create_empty width height "blank" in
+    for x = 0 to width - 1 do
+      for y = 0 to height - 1 do
+        let obj = input_static_obj chan in
+        let { name ; color } = obj in
+        set_static_object result_bp {x ; y} name color;
+      done;
+    done;
+    let num_agents = input_binary_int chan in
+    for i = 0 to num_agents - 1 do
+      let agent = input_agent chan in
+      add_agent result_bp agent.agent_name agent.color agent.agent_class_name agent.texture_name agent.pos;
+    done;
+    close_in chan;
+    result_bp
 
   let draw_prep (bp : t) : unit =
     let open Raylib in
@@ -224,9 +308,7 @@ let update (board : t) : unit =
     | Actions.Walk (delta_x, delta_y) ->
       let pos = Agent.get_pos agent in
       let pos' = {x = pos.x + delta_x ; y = pos.y + delta_y} in
-      if is_occupied board pos' then
-        ()
-      else
+      if not @@ is_occupied board pos' then
         begin
           set_agent board pos None;
           set_agent board pos' (Some agent);

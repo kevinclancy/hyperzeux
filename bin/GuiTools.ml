@@ -26,6 +26,13 @@ Displays an interactive textbox which receives a string from user input.
   let open Raylib in
   let edit_text = ref "" in
   let choice : string option ref = ref None in
+
+  begin_drawing ();
+    (* Intentionally left empty to clear out input data,
+       i.e. prevent the textbox from starting out containing the letter of the key
+       that opened the dialog *)
+  end_drawing ();
+
   while (not @@ window_should_close ()) && (Option.is_none !choice) do
     clear_background Color.gray;
     begin_drawing ();

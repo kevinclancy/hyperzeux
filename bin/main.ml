@@ -60,14 +60,6 @@ let get_agent_class () : (module AgentClass) option =
     (fun (c : (module AgentClass)) ->
       let module M = (val c : AgentClass) in TextureMap.get M.preview_texture_name)
 
-let save_board (bp : Board.Blueprint.t) : unit =
-  let opt_filename = GuiTools.get_input_string "Enter filename to save board to" in
-  match opt_filename with
-  | Some(filename) ->
-    Board.Blueprint.serialize bp (String.concat "/" [Filename.current_dir_name ; filename])
-  | None ->
-    ()
-
 let () =
   Printexc.record_backtrace true;
   init_window Config.screen_width Config.screen_height "Visions of Evermore";
@@ -121,16 +113,45 @@ let () =
     }
   in
 
-  let bp =
-    Board.Blueprint.create_empty board_cells_width board_cells_height "empty"
-  in
   let game_state =
     ref @@ Editing {
-      blueprint = bp ;
+      blueprint = Board.Blueprint.create_empty board_cells_width board_cells_height "empty" ;
       camera_pos = ref @@ Vector2.create 0.0 0.0 ;
       scale = ref 1.0 ;
       selector = ref object_selector_state
     }
+  in
+  let save_board (bp : Board.Blueprint.t) : unit =
+    let opt_filename = GuiTools.get_input_string "Enter filename to save board to" in
+    match opt_filename with
+    | Some(filename) ->
+      Board.Blueprint.serialize bp (String.concat "/" [Filename.current_dir_name ; filename])
+    | None ->
+      ()
+  in
+  let load_board () : unit =
+    let opt_filename = GuiTools.get_input_string "Enter filename to load board from" in
+    match opt_filename with
+    | Some(filename) ->
+      let bp = Board.Blueprint.deserialize filename in
+      let object_selector_state : selector_state =
+        let open ObjectSelector in
+        {
+          name = StaticObjectSelector ;
+          draw = (fun () -> draw object_selector) ;
+          next = (fun () -> next_obj object_selector) ;
+          prev = (fun () -> prev_obj object_selector) ;
+          instantiate = instantiate object_selector ;
+        }
+      in
+      game_state := Editing {
+        blueprint = bp ;
+        camera_pos = ref @@ Vector2.create 0.0 0.0 ;
+        scale = ref 1.0 ;
+        selector = ref object_selector_state
+      }
+    | None ->
+      ()
   in
   while not (window_should_close ()) do
     match !game_state with
@@ -178,7 +199,9 @@ let () =
             ()
         end
       else if (is_key_pressed Key.S) && (is_key_down Key.Left_alt) then
-        save_board blueprint;
+        save_board blueprint
+      else if (is_key_pressed Key.O) && (is_key_down Key.Left_alt) then
+        load_board ();
 
       if (Raylib.is_mouse_button_pressed MouseButton.Left && (!selector).name = AgentSelector) ||
          (Raylib.is_mouse_button_down MouseButton.Left && (!selector).name = StaticObjectSelector) then
@@ -191,10 +214,10 @@ let () =
               (!selector).instantiate blueprint {x ; y};
         end;
 
-      Board.Blueprint.draw_prep bp;
+      Board.Blueprint.draw_prep blueprint;
 
       begin_drawing ();
-        Board.Blueprint.draw bp !camera_pos !scale;
+        Board.Blueprint.draw blueprint !camera_pos !scale;
         (* let curr_obj_texture = TextureMap.get curr_object.texture_name in *)
         (!selector).draw () ;
         (* draw_texture_ex

@@ -28,7 +28,10 @@ module Blueprint : sig
     (** [draw blueprint pos scale] *)
 
     val serialize : t -> string -> unit
-    (** [serialize blueprint filename] Saves the board blueprint to the file labeled filename *)
+    (** [serialize blueprint filename] Saves the board blueprint to the file whose absolute path is [filename] *)
+
+    val deserialize : string -> t
+    (** [deserialize board_file] Loads a board blueprint from the absolute file path [board_file] *)
 end
 
 type t

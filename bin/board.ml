@@ -99,6 +99,24 @@ module Blueprint = struct
   let contains_agent_name (bp : t) (agent_name : string) : bool =
     StringMap.mem agent_name !(bp.agents)
 
+  let draw_prep (bp : t) : unit =
+    let open Raylib in
+    begin_texture_mode bp.render_texture;
+      let draw_agent (_ : string) (agent_blueprint : agent_blueprint) : unit =
+        let { x = x ; y = y } = agent_blueprint.pos in
+        let pos = Vector2.create (Float.of_int @@ x * Config.char_width) (Float.of_int @@ y * Config.char_height) in
+        let texture = TextureMap.get agent_blueprint.texture_name in
+        draw_texture_ex texture pos 0.0 1.0 agent_blueprint.color;
+      in
+      let width = (Float.of_int Config.board_pixels_width) in
+      let height = (Float.of_int Config.board_pixels_height) in
+      let src = Rectangle.create 0.0 0.0 width (-. height) in
+      let dest = Rectangle.create 0.0 0.0 width height in
+      draw_texture_pro (RenderTexture.texture bp.static_bg_texture) src dest (Vector2.create 0.0 0.0) 0.0 Color.white;
+      StringMap.iter draw_agent !(bp.agents);
+      draw_texture_pro (RenderTexture.texture bp.grid_texture) src dest (Vector2.zero ()) 0.0 Color.white;
+    end_texture_mode ()
+
   let output_binary_string (chan : out_channel) (s : string) : unit =
     output_binary_int chan (String.length s);
     output_bytes chan (String.to_bytes s)
@@ -168,7 +186,7 @@ module Blueprint = struct
     let chan = open_in_bin filename in
     let width = input_binary_int chan in
     let height = input_binary_int chan in
-    let result_bp = create_empty width height "blank" in
+    let result_bp = create_empty width height "empty" in
     for x = 0 to width - 1 do
       for y = 0 to height - 1 do
         let obj = input_static_obj chan in
@@ -182,25 +200,8 @@ module Blueprint = struct
       add_agent result_bp agent.agent_name agent.color agent.agent_class_name agent.texture_name agent.pos;
     done;
     close_in chan;
+    draw_prep result_bp;
     result_bp
-
-  let draw_prep (bp : t) : unit =
-    let open Raylib in
-    begin_texture_mode bp.render_texture;
-      let draw_agent (_ : string) (agent_blueprint : agent_blueprint) : unit =
-        let { x = x ; y = y } = agent_blueprint.pos in
-        let pos = Vector2.create (Float.of_int @@ x * Config.char_width) (Float.of_int @@ y * Config.char_height) in
-        let texture = TextureMap.get agent_blueprint.texture_name in
-        draw_texture_ex texture pos 0.0 1.0 agent_blueprint.color;
-      in
-      let width = (Float.of_int Config.board_pixels_width) in
-      let height = (Float.of_int Config.board_pixels_height) in
-      let src = Rectangle.create 0.0 0.0 width (-. height) in
-      let dest = Rectangle.create 0.0 0.0 width height in
-      draw_texture_pro (RenderTexture.texture bp.static_bg_texture) src dest (Vector2.create 0.0 0.0) 0.0 Color.white;
-      StringMap.iter draw_agent !(bp.agents);
-      draw_texture_pro (RenderTexture.texture bp.grid_texture) src dest (Vector2.zero ()) 0.0 Color.white;
-    end_texture_mode ()
 
   (** [draw blueprint pos scale] *)
   let draw (bp : t) (pos : Raylib.Vector2.t) (scale : float) : unit =

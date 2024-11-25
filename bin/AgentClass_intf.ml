@@ -1,6 +1,13 @@
+open Common
+
+type board_interface = {
+  get_waypoint : string -> position
+  (** Retrieve the waypoint with the given name *)
+}
+
 module type AgentClass = sig
-  val create : string -> Common.position -> Raylib.Color.t -> Agent.t
-  (** [create name pos color] Creates an agent named [name] at position [pos] with color [color] *)
+  val create : board_interface -> string -> Common.position -> Raylib.Color.t -> Agent.t
+  (** [create board_intf name pos color] Creates an agent named [name] at position [pos] with color [color] *)
 
   val preview_texture_name : string
   (** The name of the texture used to represent the agent class in the map editor *)

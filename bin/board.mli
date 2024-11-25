@@ -17,6 +17,13 @@ module Blueprint : sig
     val add_agent : t -> string -> Raylib.Color.t -> string -> string -> position -> unit
     (** [set_agent blueprint agent_name color agent_class_name texture_name pos] *)
 
+    val add_waypoint : t -> string -> position -> unit
+    (** [add_waypoint blueprint waypoint_name waypoint_position]
+        Adds a waypoint named [waypoint_name] at position [waypoint_position] *)
+
+    val contains_waypoint_name : t -> string -> bool
+    (** [contains_waypoint_name blueprint name] *)
+
     val contains_agent_name : t -> string -> bool
     (** [contains_agent_name name] returns true iff this board blueprint
         contains a blueprint for an agent named [name] *)

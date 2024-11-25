@@ -60,6 +60,12 @@ let get_agent_class () : (module AgentClass) option =
     (fun (c : (module AgentClass)) ->
       let module M = (val c : AgentClass) in TextureMap.get M.preview_texture_name)
 
+let get_mouse_boardpos (camera_pos : Vector2.t) (scale : float) : position =
+  let mouse_pos = Raylib.get_mouse_position () in
+  let x = Int.of_float @@ ((Vector2.x mouse_pos) +. (Vector2.x camera_pos)) /. (scale *. (Float.of_int @@ Config.char_width)) in
+  let y = Int.of_float @@ ((Vector2.y mouse_pos) +. (Vector2.y camera_pos)) /. (scale *. (Float.of_int @@ Config.char_height)) in
+  { x ; y }
+
 let () =
   Printexc.record_backtrace true;
   init_window Config.screen_width Config.screen_height "Visions of Evermore";
@@ -71,14 +77,19 @@ let () =
   TextureMap.load "person_north_recon.png";
   TextureMap.load "person_east_recon.png";
   TextureMap.load "person_west_recon.png";
+  TextureMap.load "person2_south.png";
+  TextureMap.load "person2_north.png";
+  TextureMap.load "person2_east.png";
+  TextureMap.load "person2_west.png";
   TextureMap.load "empty_cell.png";
   TextureMap.load "solid_wall.png";
   TextureMap.load "checkered_wall.png";
   TextureMap.load "plant_1.png";
   TextureMap.load "plant_2.png";
+  TextureMap.load "waypoint.png";
 
-  AgentClassMap.add (module Patroller);
-  AgentClassMap.add (module Player);
+  AgentClassMap.add (module Agents.Patroller);
+  AgentClassMap.add (module Agents.Player);
 
   StaticObjectMap.add { name = "empty" ; texture_name = "empty_cell.png" ; traversable = true };
   StaticObjectMap.add { name = "wall" ; texture_name = "solid_wall.png" ; traversable = false };
@@ -201,7 +212,18 @@ let () =
       else if (is_key_pressed Key.S) && (is_key_down Key.Left_alt) then
         save_board blueprint
       else if (is_key_pressed Key.O) && (is_key_down Key.Left_alt) then
-        load_board ();
+        load_board ()
+      else if (is_key_pressed Key.W) then
+        begin
+        let {x ; y} = get_mouse_boardpos !camera_pos !scale in
+        if x >= 0 && y >= 0 && x < Config.board_cells_width && y < Config.board_cells_height then
+          let opt_name = GuiTools.get_new_name (Board.Blueprint.contains_waypoint_name blueprint) in
+          match opt_name with
+          | Some(name) ->
+              Board.Blueprint.add_waypoint blueprint name {x;y};
+          | None ->
+            ()
+        end;
 
       if (Raylib.is_mouse_button_pressed MouseButton.Left && (!selector).name = AgentSelector) ||
          (Raylib.is_mouse_button_down MouseButton.Left && (!selector).name = StaticObjectSelector) then

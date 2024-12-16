@@ -1,5 +1,36 @@
 open Common
 
+let region_colors =
+  Array.map
+    (fun c -> Raylib.color_alpha c 0.12)
+    Raylib.[| Color.blue ; Color.brown ; Color.green ; Color.magenta ; Color.gold ; Color.purple ; Color.orange ; Color.pink |]
+
+  type region_component = {
+    (** A rectangular subsection of a region *)
+
+      top  :  int ;
+      (** The row index of the top cell of the rectangle *)
+
+      left :  int ;
+      (** The column index of the leftmost cell of the rectangle *)
+
+      bottom : int ;
+      (** The row index of the bottom cell of the rectangle *)
+
+      right : int ;
+      (** The column index of the rightmost cell of the rectangle *)
+    }
+
+type region = {
+  (** A set of board cells *)
+
+  description : string ref ;
+  (** A description of the region *)
+
+  components : (region_component StringMap.t) ref
+  (** The rectangles the constitute the region *)
+}
+
 module Blueprint = struct
   type agent_blueprint = {
     agent_class_name : string ;
@@ -27,6 +58,8 @@ module Blueprint = struct
     (** the position of the waypoint *)
   }
 
+  (** Maps each component name to the component *)
+
   type t = {
     width : int ;
     (** Grid cells of board in width *)
@@ -43,6 +76,9 @@ module Blueprint = struct
 
     waypoints : (position StringMap.t) ref ;
     (** Maps waypoint names to waypoint positions *)
+
+    regions : (region StringMap.t) ref ;
+    (** Maps each region name to the region *)
 
     static_bg_texture : Raylib.RenderTexture.t ;
     (** A texture depicting the full static object map. *)
@@ -82,6 +118,7 @@ module Blueprint = struct
           width
           (fun _ -> Array.init height (fun _ -> ref { name = empty_object_key ; color = Color.white }));
       agents = ref StringMap.empty ;
+      regions = ref StringMap.empty ;
       static_bg_texture ;
       render_texture =
         Raylib.load_render_texture
@@ -123,6 +160,15 @@ module Blueprint = struct
   let contains_agent_name (bp : t) (agent_name : string) : bool =
     StringMap.mem agent_name !(bp.agents)
 
+  let region_names (bp : t) : string list =
+    List.map fst (StringMap.to_list !(bp.regions))
+
+  let region (bp : t) (name : string) : region =
+    StringMap.find name !(bp.regions)
+
+  let add_region (bp : t) (name :string) (region : region) =
+    bp.regions := StringMap.add name region !(bp.regions)
+
   let add_waypoint (bp : t) (waypoint_name : string) (pos : position) : unit =
     assert (StaticObjectMap.get (!(get_static_object_ref bp pos)).name).traversable;
     assert (not @@ contains_waypoint_name bp waypoint_name);
@@ -144,6 +190,21 @@ module Blueprint = struct
         let texture = TextureMap.get "waypoint.png" in
         draw_texture_ex texture pos 0.0 1.0 Raylib.Color.green
       in
+      let draw_region_component (color : Raylib.Color.t) (_ : string) (component : region_component) : unit =
+        let width = component.right - component.left + 1 in
+        let height = component.bottom - component.top + 1 in
+        draw_rectangle
+          (component.left * Config.char_width)
+          (component.top * Config.char_height)
+          (width * Config.char_width)
+          (height * Config.char_height)
+          color
+      in
+      let region_color_ind = ref 0 in
+      let draw_region (_ : string) (region : region) : unit =
+        StringMap.iter (draw_region_component @@ Array.get region_colors !region_color_ind) !(region.components);
+        region_color_ind := (!region_color_ind + 1) mod (Array.length region_colors)
+      in
       let width = (Float.of_int Config.board_pixels_width) in
       let height = (Float.of_int Config.board_pixels_height) in
       let src = Rectangle.create 0.0 0.0 width (-. height) in
@@ -151,6 +212,7 @@ module Blueprint = struct
       draw_texture_pro (RenderTexture.texture bp.static_bg_texture) src dest (Vector2.create 0.0 0.0) 0.0 Color.white;
       StringMap.iter draw_agent !(bp.agents);
       StringMap.iter draw_waypoint !(bp.waypoints);
+      StringMap.iter draw_region !(bp.regions);
       draw_texture_pro (RenderTexture.texture bp.grid_texture) src dest (Vector2.zero ()) 0.0 Color.white;
     end_texture_mode ()
 
@@ -188,6 +250,41 @@ module Blueprint = struct
     output_binary_int chan (Raylib.Color.b agent.color);
     output_binary_int chan (Raylib.Color.a agent.color)
 
+  let output_region_component (chan : out_channel) (component_name : string) (component : region_component) : unit =
+    output_binary_string chan component_name;
+    output_binary_int chan component.top;
+    output_binary_int chan component.left;
+    output_binary_int chan component.bottom;
+    output_binary_int chan component.right
+
+  let input_region_component (chan : in_channel) : string * region_component =
+    (** Returns pair of (region component name, region component) *)
+    let name = input_binary_string chan in
+    let top = input_binary_int chan in
+    let left = input_binary_int chan in
+    let bottom = input_binary_int chan in
+    let right = input_binary_int chan in
+    let region_component = { top ; left ; bottom ; right } in
+    name, region_component
+
+  let output_region (chan : out_channel) (region_name : string) (region : region) : unit =
+    output_binary_string chan region_name;
+    output_binary_string chan !(region.description);
+    output_binary_int chan (StringMap.cardinal !(region.components));
+    StringMap.iter (output_region_component chan) !(region.components)
+
+  let input_region (chan : in_channel) : string * region =
+    (** Returns pair of (region name, region) *)
+    let region_name = input_binary_string chan in
+    let description = input_binary_string chan in
+    let num_components = input_binary_int chan in
+    let components = ref StringMap.empty in
+    for i = 0 to (num_components-1) do
+      let name, component = input_region_component chan in
+      components := StringMap.add name component (!components);
+    done;
+    region_name, { description = ref description ; components }
+
   let input_agent (chan : in_channel) : agent_blueprint =
     let agent_class_name = input_binary_string chan in
     let agent_name = input_binary_string chan in
@@ -217,6 +314,8 @@ module Blueprint = struct
     done;
     output_binary_int chan (StringMap.cardinal !(bp.agents));
     StringMap.iter (output_agent chan) !(bp.agents);
+    output_binary_int chan (StringMap.cardinal !(bp.regions));
+    StringMap.iter (output_region chan) !(bp.regions);
     close_out chan
 
   let deserialize (filename : string) : t =
@@ -235,6 +334,11 @@ module Blueprint = struct
     for i = 0 to num_agents - 1 do
       let agent = input_agent chan in
       add_agent result_bp agent.agent_name agent.color agent.agent_class_name agent.texture_name agent.pos;
+    done;
+    let num_regions = input_binary_int chan in
+    for i = 0 to num_regions - 1 do
+      let region_name, region = input_region chan in
+      result_bp.regions := StringMap.add region_name region !(result_bp.regions);
     done;
     close_in chan;
     draw_prep result_bp;

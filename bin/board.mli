@@ -1,5 +1,32 @@
 open Common
 
+type region_component = {
+  (** A rectangular subsection of a region *)
+
+    top  :  int ;
+    (** The row index of the top cell of the rectangle *)
+
+    left :  int ;
+    (** The column index of the leftmost cell of the rectangle *)
+
+    bottom : int ;
+    (** The row index of the bottom cell of the rectangle *)
+
+    right : int ;
+    (** The column index of the rightmost cell of the rectangle *)
+  }
+
+type region = {
+  (** A set of board cells *)
+
+  description : string ref ;
+  (** A description of the region *)
+
+  components : (region_component StringMap.t) ref
+  (** The rectangles the constitute the region *)
+}
+
+
 module Blueprint : sig
     type t
     (** A static specification of a board's starting state,
@@ -27,6 +54,15 @@ module Blueprint : sig
     val contains_agent_name : t -> string -> bool
     (** [contains_agent_name name] returns true iff this board blueprint
         contains a blueprint for an agent named [name] *)
+
+    val region_names : t -> string list
+    (** [region_names bp] Return a list of all region names in the blueprint [bp] *)
+
+    val region : t -> string -> region
+    (** [region bp region_name] Returns the region in blueprint [bp] whose name is [region_name] *)
+
+    val add_region : t -> string -> region -> unit
+    (** [add_region bp region_name region] Adds [region] with name [region_name] to region map *)
 
     val draw_prep : t -> unit
     (** [draw_prep blueprint] Draws board components to a render texture in preparation for drawing *)

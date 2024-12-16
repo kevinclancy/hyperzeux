@@ -1,6 +1,9 @@
 let char_width = 8
 let char_height = 14
 
+let char_width_f = Float.of_int char_width
+let char_height_f = Float.of_int char_height
+
 let board_cells_width = 30
 let board_cells_height = 20
 

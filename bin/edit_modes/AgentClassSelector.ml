@@ -78,7 +78,7 @@ let draw (selector : t) =
 
 let instantiate (selector : t) (bp : Board.Blueprint.t) (pos : position) : unit =
   let module M = (val !(selector.curr_class) : AgentClass) in
-  match GuiTools.get_new_name (Board.Blueprint.contains_agent_name bp) with
+  match GuiTools.get_new_name "Enter new agent name" (Board.Blueprint.contains_agent_name bp) with
   | Some(name) ->
     Board.Blueprint.add_agent bp name !(selector.color) M.name M.preview_texture_name pos
   | None ->

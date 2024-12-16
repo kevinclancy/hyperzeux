@@ -49,19 +49,37 @@ Displays an interactive textbox which receives a string from user input.
   done;
   !choice
 
-let get_new_name (is_forbidden : string -> bool) : string option =
+let get_new_name (label : string) (is_forbidden : string -> bool) : string option =
+(** [get_new_name is_forbidden]
+
+Displays an interactive textbox which receives a string from user input.
+
+## Parameters
+
+* [label] - The label to display the textbox with
+
+* [is_forbidden] - A predicate that returns `true` if the argument is forbidden as a selection
+                   (perhaps because it's already being "used")
+
+## Returns
+
+* Some(str) where [str] is the user's input string if [str] is not forbidden and the user exits with the Enter key
+
+* None if the user exits with the Escape key
+
+*)
   let open Raylib in
   let edit_text = ref "" in
   let choice : string option ref = ref None in
   while (not @@ window_should_close ()) && (Option.is_none !choice) do
     clear_background Color.gray;
     begin_drawing ();
-      Raygui.label (Rectangle.create 10.0 10.0 300.0 14.0) "Enter new agent name:";
+      Raygui.label (Rectangle.create 10.0 10.0 300.0 14.0) label;
       edit_text :=
         begin
           Raygui.set_style (Default `Text_size) 24;
           if is_forbidden !edit_text then
-              Raylib.draw_text "agent name already used!" 10 120 24 Raylib.Color.red;
+              Raylib.draw_text "name already used!" 10 120 24 Raylib.Color.red;
           let txt,_ = Raygui.text_box (rect 10.0 30.0 300.0 80.0) !edit_text true in
           trim_zeros txt
         end;

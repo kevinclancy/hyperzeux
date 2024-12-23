@@ -1,4 +1,5 @@
 open Common
+open Region
 
 type menu_state = {
   region_list_scroll_index : int ref ;
@@ -28,11 +29,11 @@ type region_editor_state =
   (** MenuActive(menu_state) means that we currently see the GUI for the component and region lists, as well as buttons for adding new components
       and regions *)
 
-  | ComponentTopLeft of Board.region * string * string
+  | ComponentTopLeft of region * string * string
   (** ComponentTopLeft(region, region_name, component_name) means we are adding a component (rectangle) named [component_name] to [region],
       and we are locating the top left corner of the new component by asking the user to click on a board cell.  *)
 
-  | ComponentBottomRight of Board.region * string * string * position
+  | ComponentBottomRight of region * string * string * position
   (** ComponentBottomRight(region, region_name, component_name, top_left_pos) means we are adding a component (rectangle) named [component_name] to [region],
       and, having already chosen the position [top_left_pos] of its top left corner, we are now choosing the location of the bottom right corner
       of the new component by asking the user to click on a board cell.  *)
@@ -229,7 +230,7 @@ let draw_menu (region_editor_state : t) (menu_state : menu_state) (bp : Board.Bl
   end;
   ()
 
-let draw_top_left (region_editor : t) (region_name : string) (region : Board.region) (component_name : string) : unit =
+let draw_top_left (region_editor : t) (region_name : string) (region : region) (component_name : string) : unit =
   (** Draw the region editor's state when choosing the top-left cell of a new component *)
   let open Raylib in
   draw_rectangle_rec boundary Color.black;
@@ -251,7 +252,7 @@ let draw_top_left (region_editor : t) (region_name : string) (region : Board.reg
           or we could just get it from the raylib API *)
 let draw_bottom_right (region_editor : t)
                       (region_name : string)
-                      (region : Board.region)
+                      (region : region)
                       (component_name : string)
                       (top_left_cell_pos : position)
                       (camera_pos : vec2)

@@ -1,171 +1,114 @@
 open Common
+open AgentState
 
-type state =
-  | BeginScript of (t -> unit)
-  (** [BeginScript script] Agent will subsequently begin executing [script] *)
-  | RunningAgent of (Actions.action_result, Actions.action) Effect.Deep.continuation
-  (** [RunningAgent cont] where [cont] may produce [Act] effects *)
-  | Idling
-  (** [Idling] Agent is waiting to respond to stimuli *)
-
-and event_handlers = {
-    initial : (t -> unit) option ;
-    (** Script to begin running when we enter the state, or begin idling if None *)
-
-    receive_bump : (t -> t -> unit) option ;
-    (** [receive_bump self other] is called when [other] bumps into this agent *)
-
-    assert_invariants : (t -> unit) option ;
-
-    key_left : (t -> unit) option ;
-    key_right : (t -> unit) option ;
-    key_up : (t -> unit) option ;
-    key_down : (t -> unit) option
+type board_interface = {
+  get_waypoint : string -> position
+  (** Retrieve the waypoint with the given name *)
 }
 
-and t = {
-  name : string ;
-  state : state ref ;
-  pos : position ref ;
+module type AgentClass = sig
+  val states : (module AgentStateClass) StringMap.t
+  (** Maps name of each state that agents of this class can enter to the state itself *)
 
-  event_handlers : event_handlers ref ;
+  val initial_state : (module AgentStateClass with type t_private_data = unit)
+  (** The state that the agent starts out in *)
+
+  val preview_texture_name : string
+  (** The name of the texture used to represent the agent class in the map editor *)
+
+  val preview_color : Raylib.Color.t
+  (** The color that the preview texture is drawn in the map editor *)
+
+  val speed : float
+
+  val name : string
+  (** The name of the agent class *)
+end
+
+type t = {
+  agent_class : (module AgentClass) ;
+
+  puppet : Puppet.t ;
+  (** The physical body this agent controls *)
+
+  agent_state : AgentState.t ref ;
+  (** The current scripts used to control the puppet *)
 
   speed : float ref ;
   (** speed in actions per second, should be at most 1.0 *)
 
   action_meter : float ref ;
   (** percentage of wait completed before next action is allowed *)
-
-  texture : Raylib.Texture.t ref ;
-  (** current texture depicting the agent *)
-
-  color : Raylib.Color.t ref
-  (** current color depicting agent *)
-};;
-
-let get_name (agent : t) : string =
-  agent.name
-
-let set_pos (agent : t) (pos : position) =
-  agent.pos := pos;;
-
-let get_pos (agent : t) : position =
-  !(agent.pos);;
-
-let set_texture (agent : t) (texture : Raylib.Texture.t) : unit =
-  agent.texture := texture
-
-let get_texture (agent : t) : Raylib.Texture.t =
-  !(agent.texture);;
-
-let get_color (agent : t) : Raylib.Color.t =
-  !(agent.color)
-
-let receive_bump (self : t) (other : t) : unit =
-  match !(self.event_handlers).receive_bump with
-  | Some(handler) ->
-    handler self other
-  | None ->
-    ()
-
-let empty_scripts = {
-  initial = None ;
-  receive_bump = None ;
-  assert_invariants = None ;
-  key_left = None ;
-  key_up = None ;
-  key_right = None ;
-  key_down = None
 }
 
-let create (name : string) (event_handlers : event_handlers) (pos : position) (color : Raylib.Color.t) ?speed (texture : Raylib.Texture.t) : t =
+let create (board : board_interface)
+           (agent_class : (module AgentClass))
+           (initial_state_class : (module AgentStateClass with type t_private_data = unit))
+           (name : string)
+           (position : position)
+           (color : Raylib.Color.t)
+           : t =
+
+  let module C = (val agent_class : AgentClass) in
+  let module S = (val initial_state_class : AgentStateClass with type t_private_data = unit) in
+  let puppet = Puppet.create name position color (TextureMap.get C.preview_texture_name) in
+  let initial_state = AgentState.create (module S) () puppet in
   {
-    name ;
-    state =
-      (match event_handlers.initial with
-       | Some(script) ->
-         ref (BeginScript script)
-       | None ->
-         ref (Idling)) ;
-    event_handlers = ref event_handlers;
-    pos = ref pos ;
-    color = ref color;
-    texture = ref texture ;
-    speed = ref (Option.value speed ~default:0.5);
-    action_meter = ref 0.0
+    agent_class ;
+    agent_state = ref initial_state ;
+    puppet ;
+    action_meter = ref 0.;
+    speed  = ref C.speed;
   }
 
-let rec resume (agent : t) (prev_result : Actions.action_result): Actions.action =
+(** [create board_intf name pos color] Creates an agent named [name] at position [pos] with color [color] *)
+
+let name (agent : t) : string =
+  Puppet.get_name agent.puppet
+
+let agent_class (agent : t) =
+  agent.agent_class
+
+let update_input (agent : t) : unit =
+  let open Raylib in
+  let opt_new_state =
+    if is_key_pressed Key.Left then
+      AgentState.key_left !(agent.agent_state)
+    else if is_key_pressed Key.Up then
+      AgentState.key_up !(agent.agent_state)
+    else if is_key_pressed Key.Right then
+      AgentState.key_right !(agent.agent_state)
+    else if is_key_pressed Key.Down then
+      AgentState.key_down !(agent.agent_state)
+    else
+      None
+  in
+  Option.iter (fun state -> agent.agent_state := state) opt_new_state
+
+let receive_bump (agent : t) (other : PuppetExternal.t) : unit =
+  let opt_new_state = AgentState.receive_bump !(agent.agent_state) other in
+  Option.iter (fun state -> agent.agent_state := state) opt_new_state
+
+let rec resume (agent : t) (prev_result : Actions.action_result) : Actions.action =
   let open Effect.Deep in
   let open Actions in
   agent.action_meter := !(agent.action_meter) +. (Raylib.get_frame_time ()) *. !(agent.speed) *. Config.speed;
   if !(agent.action_meter) > 1.0 then
     begin
-    agent.action_meter := !(agent.action_meter) -. (Float.round !(agent.action_meter));
-    match !(agent.state) with
-    | Idling ->
-      Actions.Idle
-    | RunningAgent k ->
-      continue k prev_result
-    | BeginScript script ->
-      match_with
-        script
-        agent
-        { retc = (fun _ -> agent.state := Idling; Actions.Wait) ;
-          exnc = raise ;
-          effc = fun (type a) (eff : a Effect.t) ->
-            match eff with
-            | Act action ->
-              Some (function (k : (a, _) continuation) ->
-                Option.iter (fun f -> f agent) !(agent.event_handlers).assert_invariants;
-                agent.state := RunningAgent k;
-                action
-              )
-            | _ ->
-              None }
+      agent.action_meter := !(agent.action_meter) -. (Float.round !(agent.action_meter));
+      AgentState.resume !(agent.agent_state) prev_result
     end
   else
     Actions.Idle
 
-let update_input (agent : t) : unit =
-  let open Raylib in
-  if is_key_pressed Key.Left && Option.is_some !(agent.event_handlers).key_left then
-    begin
-      let script (agent : t) =
-        (Option.get !(agent.event_handlers).key_left) agent;
-        while is_key_down Key.Left do
-          (Option.get !(agent.event_handlers).key_left) agent
-        done
-      in
-      agent.state := BeginScript script
-    end
-  else if is_key_pressed Key.Right && Option.is_some !(agent.event_handlers).key_right then
-    begin
-      let script (agent : t) =
-        (Option.get !(agent.event_handlers).key_right) agent;
-        while is_key_down Key.Right do
-          (Option.get !(agent.event_handlers).key_right) agent
-        done
-      in
-      agent.state := BeginScript script
-    end
-  else if is_key_pressed Key.Up && Option.is_some !(agent.event_handlers).key_up then
-    begin
-      let script (agent : t) =
-        (Option.get !(agent.event_handlers).key_up) agent;
-        while is_key_down Key.Up do
-          (Option.get !(agent.event_handlers).key_up) agent
-        done
-      in
-      agent.state := BeginScript script
-    end
-  else if is_key_pressed Key.Down && Option.is_some !(agent.event_handlers).key_down then
-    begin
-      let script (agent : t) =
-        (Option.get !(agent.event_handlers).key_down) agent;
-        while is_key_down Key.Down do
-          (Option.get !(agent.event_handlers).key_down) agent
-        done
-      in
-      agent.state := BeginScript script
-    end
+let position (agent : t) : position =
+  Puppet.get_pos agent.puppet
+
+let color (agent : t) : Raylib.Color.t =
+  Puppet.get_color agent.puppet
+
+let set_position (agent : t) (pos : position) : unit =
+  Puppet.set_pos agent.puppet pos
+
+let texture (agent : t) : Raylib.Texture.t =
+  Puppet.get_texture agent.puppet

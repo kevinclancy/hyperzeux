@@ -1,4 +1,4 @@
-open AgentClass_intf
+open Agent
 
 let map = OrdMap.create (fun (m : (module AgentClass)) -> let module M = (val m : AgentClass) in M.name)
 

@@ -1,7 +1,7 @@
 open Common
 open Config
 open Raylib
-open AgentClass_intf
+open Agent
 open Edit_modes
 
 (* TODO: look into Raylib's built-in Camera module *)

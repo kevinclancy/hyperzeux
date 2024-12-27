@@ -1,50 +1,59 @@
 open Common
+open AgentState
+
+type board_interface = {
+  get_waypoint : string -> position
+  (** Retrieve the waypoint with the given name *)
+}
 
 type t
 
-type event_handlers = {
-    initial : (t -> unit) option ;
+module type AgentClass = sig
+  val states : (module AgentStateClass) StringMap.t
+  (** Maps name of each state that agents of this class can enter to the state itself *)
 
-    receive_bump : (t -> t -> unit) option ;
-    (** [receive_bump self other] is called when [other] bumps into this agent *)
+  val initial_state : (module AgentStateClass with type t_private_data = unit)
+  (** The state that the agent starts out in *)
 
-    assert_invariants : (t -> unit) option ;
+  val preview_texture_name : string
+  (** The name of the texture used to represent the agent class in the map editor *)
 
-    key_left : (t -> unit) option ;
+  val preview_color : Raylib.Color.t
+  (** The color that the preview texture is drawn in the map editor *)
 
-    key_right : (t -> unit) option ;
+  val speed : float
 
-    key_up : (t -> unit) option ;
+  val name : string
+  (** The name of the agent class *)
+end
 
-    key_down : (t -> unit) option
-}
+val create : board_interface ->
+             (module AgentClass) ->
+             (module AgentStateClass with type t_private_data = unit) ->
+             string ->
+             Common.position ->
+             Raylib.Color.t ->
+             t
+(** [create board_intf name speed pos color] Creates an agent *)
 
-val empty_scripts : event_handlers
+val name : t -> string
 
-val get_pos : t -> position
+val position : t -> position
 
-val set_pos : t -> position -> unit
+val color : t -> Raylib.Color.t
 
-val get_texture : t -> Raylib.Texture.t
+val set_position : t -> position -> unit
 
-val set_texture : t -> Raylib.Texture.t -> unit
+val texture : t -> Raylib.Texture.t
 
-val get_name : t -> string
-
-val get_color : t -> Raylib.Color.t
-(** Get the current color that the agent is displayed in *)
-
-(* do I need to include a texture as an argument below, or could new agents just use some default tex? *)
-
-val create : string -> event_handlers -> position -> Raylib.Color.t -> ?speed:float -> Raylib.Texture.t -> t
-(** [create board_intf name script pos texture] Creates a new agent executing [scripts] starting at [pos] *)
-
-val resume : t -> Actions.action_result -> Actions.action
-(** [resume agent prev_action_result] Resumes [agent]'s script, providing the result of its previous action
-    [prev_action_result] to the script's current context. *)
+val agent_class : t -> (module AgentClass)
 
 val update_input : t -> unit
 (** Update agent state in response to user input *)
 
-val receive_bump : t -> t -> unit
+val receive_bump : t -> PuppetExternal.t -> unit
 (** [receive_bump self other] called when [other] bumps into [self] *)
+
+val resume : t -> Actions.action_result -> Actions.action
+(** [resume agent prev_action_result] Resumes [agent]'s script, providing the result of its previous action
+    [prev_action_result] to the script's current context. *)

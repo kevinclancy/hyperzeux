@@ -397,17 +397,17 @@ let is_occupied (board : t) (pos : position) =
   || (Option.is_some (get_cell board pos).agent)
 
 let add_agent (board : t) (agent : Agent.t) : unit =
-  assert (not @@ is_occupied board (Agent.get_pos agent));
-  assert (not @@ StringMap.mem (Agent.get_name agent) !(board.agents));
-  board.agents := StringMap.add (Agent.get_name agent) (agent, ref Actions.Success) !(board.agents)
+  assert (not @@ is_occupied board (Agent.position agent));
+  assert (not @@ StringMap.mem (Agent.name agent) !(board.agents));
+  board.agents := StringMap.add (Agent.name agent) (agent, ref Actions.Success) !(board.agents)
 
 let prep_draw (board : t) : unit =
   let open Raylib in
   begin_texture_mode board.render_texture;
     let draw_agent (_ : string) ((agent,_) : Agent.t * Actions.action_result ref) : unit =
-      let {x;y} = Agent.get_pos agent in
+      let {x;y} = Agent.position agent in
       let pos = Vector2.create (Float.of_int @@ x * Config.char_width) (Float.of_int @@ y * Config.char_height) in
-      draw_texture_ex (Agent.get_texture agent) pos 0.0 1.0 (Agent.get_color agent);
+      draw_texture_ex (Agent.texture agent) pos 0.0 1.0 (Agent.color agent);
     in
     draw_texture_ex (RenderTexture.texture board.static_texture) (Vector2.create 0.0 0.0) 0.0 1.0 Color.white;
     StringMap.iter draw_agent !(board.agents);
@@ -428,14 +428,14 @@ let update (board : t) : unit =
     Agent.update_input agent;
     match Agent.resume agent !prev_result with
     | Actions.Walk (delta_x, delta_y) ->
-      let pos = Agent.get_pos agent in
+      let pos = Agent.position agent in
       let pos' = {x = pos.x + delta_x ; y = pos.y + delta_y} in
       begin
         match not @@ is_occupied board pos' with
         | true ->
           set_agent board pos None;
           set_agent board pos' (Some agent);
-          Agent.set_pos agent pos';
+          Agent.set_position agent pos';
           prev_result := Success
         | false ->
             prev_result := Failure;
@@ -450,7 +450,7 @@ let update (board : t) : unit =
 
 let create_from_blueprint (blueprint : Blueprint.t) : t =
   let open Raylib in
-  let open AgentClass_intf in
+  let open Agent in
   let create_static_obj (static_obj_bp : Blueprint.static_object_blueprint) : grid_cell ref =
     ref {
       static_object = StaticObjectMap.get static_obj_bp.name ;
@@ -465,13 +465,12 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
         StringMap.find name !(blueprint.waypoints));
   } in
   let create_agent (agent_bp : Blueprint.agent_blueprint) : Agent.t =
-    let open AgentClass_intf in
     let module ThisAgentClass = (val (AgentClassMap.get agent_bp.agent_class_name) : AgentClass) in
-    ThisAgentClass.create board_intf agent_bp.agent_name agent_bp.pos agent_bp.color
+    Agent.create board_intf (module ThisAgentClass) (ThisAgentClass.initial_state) agent_bp.agent_name agent_bp.pos agent_bp.color
   in
   agents := StringMap.map (fun x -> (create_agent x, ref Actions.Success)) !(blueprint.agents);
   let add_agent (_ : string) ((agent, _) : Agent.t * Actions.action_result ref) : unit =
-    let {x;y} = Agent.get_pos agent in
+    let {x;y} = Agent.position agent in
     let cell = Array.get (Array.get grid x) y in
     cell := { !(cell) with agent = Some agent }
   in

@@ -1,5 +1,5 @@
 open Common
-open AgentClass_intf
+open Agent
 
 type t = {
   curr_class : (module AgentClass) ref ;
@@ -13,7 +13,7 @@ let create () : t =
   let curr_class = AgentClassMap.(get_next_elem (get_first_elem ())) in
   let module CurrentClass = (val curr_class : AgentClass) in
   {
-    curr_class = ref @@ curr_class ;
+    curr_class = ref curr_class ;
     font = Raylib.load_font "fonts/romulus.png" ;
     color = ref CurrentClass.preview_color ;
     speed = ref 0.5 ;

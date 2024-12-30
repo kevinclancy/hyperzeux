@@ -45,12 +45,12 @@ module rec Patrolling : AgentStateClass with type t_private_data = unit = struct
           walk_west me;
         done;
       );
-      key_up = Some(fun (me : Puppet.t) () ->
-        Some(AgentState.create (module FreakingOut) () me)
+      key_up_pressed = Some(fun (me : Puppet.t) () ->
+        Some(AgentState.create (module FreakingOut) ())
       )
   }
 
-  let region_name = fun () -> "patrol_area"
+  let region_name = fun () -> Some "patrol_area"
 
   let name = fun () -> "Patrolling"
 end
@@ -66,12 +66,12 @@ and FreakingOut : AgentStateClass with type t_private_data = unit = struct
           walk_south me;
         done;
       );
-      key_up = Some(fun (me : Puppet.t) () ->
-        Some(AgentState.create (module Patrolling) () me)
+      key_up_pressed = Some(fun (me : Puppet.t) () ->
+        Some(AgentState.create (module Patrolling) ())
       )
   }
 
-  let region_name = fun () -> "freak_out_area"
+  let region_name = fun () -> Some "freak_out_area"
 
   let name = fun () -> "Freaking Out"
 end
@@ -81,7 +81,7 @@ module Patroller : AgentClass = struct
     ("Patrolling", (module Patrolling : AgentStateClass))
   ]
 
-  let initial_state = (module Patrolling : AgentStateClass with type t_private_data = unit)
+  let initial_state = AgentState.create (module Patrolling) ()
 
   let preview_texture_name = "person_south_recon.png"
 

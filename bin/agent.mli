@@ -12,7 +12,7 @@ module type AgentClass = sig
   val states : (module AgentStateClass) StringMap.t
   (** Maps name of each state that agents of this class can enter to the state itself *)
 
-  val initial_state : (module AgentStateClass with type t_private_data = unit)
+  val initial_state : AgentState.t
   (** The state that the agent starts out in *)
 
   val preview_texture_name : string
@@ -29,12 +29,12 @@ end
 
 val create : board_interface ->
              (module AgentClass) ->
-             (module AgentStateClass with type t_private_data = unit) ->
+             AgentState.t ->
              string ->
              Common.position ->
              Raylib.Color.t ->
              t
-(** [create board_intf name speed pos color] Creates an agent *)
+(** [create board_interface agent_class initial_state name speed pos color] Creates an agent *)
 
 val name : t -> string
 

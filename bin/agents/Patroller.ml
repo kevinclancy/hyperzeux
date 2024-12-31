@@ -1,6 +1,7 @@
 open Common
 open Agent
 open AgentState
+open BoardInterface
 
 let walk_north (puppet : Puppet.t) =
   Puppet.set_texture puppet (TextureMap.get "person_north_recon.png");
@@ -18,19 +19,13 @@ let walk_west (puppet : Puppet.t) =
   Puppet.set_texture puppet (TextureMap.get "person_west_recon.png");
   Actions.walk_west ()
 
-let name = "patroller"
-
-let preview_texture_name = "person_south_recon.png"
-
-let preview_color = Raylib.Color.white
-
 module rec Patrolling : AgentStateClass with type t_private_data = unit = struct
   type t_private_data = unit
 
   let state_functions = fun () -> {
     AgentState.empty_state_functions with
       (* Initially start patrolling in a 2x2 square *)
-      script = Some (fun (me : Puppet.t) () ->
+      script = Some (fun (board : board_interface) (me : Puppet.t) () ->
         while true do
           walk_north me;
           walk_north me;
@@ -45,7 +40,7 @@ module rec Patrolling : AgentStateClass with type t_private_data = unit = struct
           walk_west me;
         done;
       );
-      key_up_pressed = Some(fun (me : Puppet.t) () ->
+      receive_bump = Some(fun (board : board_interface) (me : Puppet.t) () (other : PuppetExternal.t) ->
         Some(AgentState.create (module FreakingOut) ())
       )
   }
@@ -60,18 +55,19 @@ and FreakingOut : AgentStateClass with type t_private_data = unit = struct
   let state_functions = fun () -> {
     AgentState.empty_state_functions with
       (* Initially start patrolling in a 2x2 square *)
-      script = Some (fun (me : Puppet.t) () ->
+      script = Some (fun (board : board_interface) (me : Puppet.t) () ->
         while true do
           walk_north me;
           walk_south me;
+          walk_south me;
         done;
       );
-      key_up_pressed = Some(fun (me : Puppet.t) () ->
+      key_up_pressed = Some(fun (board : board_interface) (me : Puppet.t) () ->
         Some(AgentState.create (module Patrolling) ())
       )
   }
 
-  let region_name = fun () -> Some "freak_out_area"
+  let region_name = fun () -> Some "patrol_area"
 
   let name = fun () -> "Freaking Out"
 end
@@ -89,7 +85,7 @@ module Patroller : AgentClass = struct
 
   let speed = 0.3
 
-  let name = "Patroller"
+  let name = "patroller"
 end
 
 include Patroller

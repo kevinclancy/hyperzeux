@@ -44,7 +44,7 @@ Displays an interactive textbox which receives a string from user input.
         trim_zeros txt;
       end;
       if (is_key_pressed Key.Enter) then
-        choice := Some !edit_text;
+          choice := Some !edit_text;
     end_drawing ()
   done;
   !choice

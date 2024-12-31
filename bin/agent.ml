@@ -1,10 +1,6 @@
 open Common
 open AgentState
-
-type board_interface = {
-  get_waypoint : string -> position
-  (** Retrieve the waypoint with the given name *)
-}
+open BoardInterface
 
 module type AgentClass = sig
   val states : (module AgentStateClass) StringMap.t
@@ -31,6 +27,9 @@ type t = {
   puppet : Puppet.t ;
   (** The physical body this agent controls *)
 
+  board : board_interface ;
+  (** Interface to the board this agent is inside of *)
+
   agent_state : AgentState.t ref ;
   (** The current scripts used to control the puppet *)
 
@@ -53,6 +52,7 @@ let create (board : board_interface)
   let puppet = Puppet.create name position color (TextureMap.get C.preview_texture_name) in
   {
     agent_class ;
+    board ;
     agent_state = ref initial_state ;
     puppet ;
     action_meter = ref 0.;
@@ -71,28 +71,28 @@ let update_input (agent : t) : unit =
   let open Raylib in
   let opt_new_state =
     if is_key_pressed Key.Left then
-      AgentState.key_left_pressed !(agent.agent_state) agent.puppet
+      AgentState.key_left_pressed !(agent.agent_state) agent.board agent.puppet
     else if is_key_pressed Key.Up then
-      AgentState.key_up_pressed !(agent.agent_state) agent.puppet
+      AgentState.key_up_pressed !(agent.agent_state) agent.board agent.puppet
     else if is_key_pressed Key.Right then
-      AgentState.key_right_pressed !(agent.agent_state) agent.puppet
+      AgentState.key_right_pressed !(agent.agent_state) agent.board agent.puppet
     else if is_key_pressed Key.Down then
-      AgentState.key_down_pressed !(agent.agent_state) agent.puppet
+      AgentState.key_down_pressed !(agent.agent_state) agent.board agent.puppet
     else if is_key_released Key.Left then
-      AgentState.key_left_released !(agent.agent_state) agent.puppet
+      AgentState.key_left_released !(agent.agent_state) agent.board agent.puppet
     else if is_key_released Key.Up then
-      AgentState.key_up_released !(agent.agent_state) agent.puppet
+      AgentState.key_up_released !(agent.agent_state) agent.board agent.puppet
     else if is_key_released Key.Right then
-      AgentState.key_right_released !(agent.agent_state) agent.puppet
+      AgentState.key_right_released !(agent.agent_state) agent.board agent.puppet
     else if is_key_released Key.Down then
-      AgentState.key_down_released !(agent.agent_state) agent.puppet
+      AgentState.key_down_released !(agent.agent_state) agent.board agent.puppet
     else
       None
   in
   Option.iter (fun state -> agent.agent_state := state) opt_new_state
 
 let receive_bump (agent : t) (other : PuppetExternal.t) : unit =
-  let opt_new_state = AgentState.receive_bump !(agent.agent_state) agent.puppet other in
+  let opt_new_state = AgentState.receive_bump !(agent.agent_state) agent.board agent.puppet other in
   Option.iter (fun state -> agent.agent_state := state) opt_new_state
 
 let rec resume (agent : t) (prev_result : Actions.action_result) : Actions.action =
@@ -102,7 +102,7 @@ let rec resume (agent : t) (prev_result : Actions.action_result) : Actions.actio
   if !(agent.action_meter) > 1.0 then
     begin
       agent.action_meter := !(agent.action_meter) -. (Float.round !(agent.action_meter));
-      AgentState.resume !(agent.agent_state) agent.puppet prev_result
+      AgentState.resume !(agent.agent_state) agent.board agent.puppet prev_result
     end
   else
     Actions.Idle
@@ -112,6 +112,9 @@ let position (agent : t) : position =
 
 let color (agent : t) : Raylib.Color.t =
   Puppet.get_color agent.puppet
+
+let puppet (agent : t) : Puppet.t =
+  agent.puppet
 
 let set_position (agent : t) (pos : position) : unit =
   Puppet.set_pos agent.puppet pos

@@ -18,6 +18,11 @@ val walk_east : unit -> unit
 val walk_south : unit -> unit
 val walk_west : unit -> unit
 
+val weak_walk_north : unit -> unit
+val weak_walk_east : unit -> unit
+val weak_walk_south : unit -> unit
+val weak_walk_west : unit -> unit
+
 val wait : int -> unit
 (** [wait n] waits for [n] ticks *)
 

@@ -1,10 +1,6 @@
 open Common
 open AgentState
-
-type board_interface = {
-  get_waypoint : string -> position
-  (** Retrieve the waypoint with the given name *)
-}
+open BoardInterface
 
 type t
 
@@ -34,13 +30,15 @@ val create : board_interface ->
              Common.position ->
              Raylib.Color.t ->
              t
-(** [create board_interface agent_class initial_state name speed pos color] Creates an agent *)
+(** [create board agent_class initial_state name speed pos color] Creates an agent *)
 
 val name : t -> string
 
 val position : t -> position
 
 val color : t -> Raylib.Color.t
+
+val puppet : t -> Puppet.t
 
 val set_position : t -> position -> unit
 

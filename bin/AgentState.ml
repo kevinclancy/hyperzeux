@@ -1,43 +1,44 @@
+open BoardInterface
 
 type 's state_functions = {
   (** Functions for controlling an agent, where ['s] is the type of the agent's private data, i.e. its "memory" *)
 
-  script : (Puppet.t -> 's -> unit) option ;
+  script : (board_interface -> Puppet.t -> 's -> unit) option ;
   (** Coroutine to run while in this state, or None to idle *)
 
-  assert_invariants : (Puppet.t -> 's -> unit) option ;
+  assert_invariants : (board_interface -> Puppet.t -> 's -> unit) option ;
   (** Function to call to assert state invariants. None means there are no assertable invariants. *)
 
-  receive_bump : (Puppet.t -> 's -> PuppetExternal.t -> t option) option ;
+  receive_bump : (board_interface -> Puppet.t -> 's -> PuppetExternal.t -> t option) option ;
   (** [receive_bump self private_data other] is called when [other] bumps into this agent *)
 
-  key_left_pressed : (Puppet.t -> 's -> t option) option ;
+  key_left_pressed : (board_interface -> Puppet.t -> 's -> t option) option ;
   (** [key_left_pressed self private_data] called when the left-arrow key is pressed *)
 
-  key_right_pressed : (Puppet.t -> 's -> t option) option ;
+  key_right_pressed : (board_interface -> Puppet.t -> 's -> t option) option ;
   (** [key_right_pressed self private_data] called when the right-arrow key is pressed *)
 
-  key_up_pressed : (Puppet.t -> 's -> t option) option ;
+  key_up_pressed : (board_interface -> Puppet.t -> 's -> t option) option ;
   (** [key_up_pressed self private_data] callback called when the up-arrow key is pressed *)
 
-  key_down_pressed : (Puppet.t -> 's -> t option) option ;
+  key_down_pressed : (board_interface -> Puppet.t -> 's -> t option) option ;
   (** [key_down_pressed self private_data] callback called when the down-arrow key is pressed *)
 
-  key_left_released : (Puppet.t -> 's -> t option) option ;
+  key_left_released : (board_interface -> Puppet.t -> 's -> t option) option ;
   (** [key_left_released self private_data] called when the left-arrow key is pressed *)
 
-  key_right_released : (Puppet.t -> 's -> t option) option ;
+  key_right_released : (board_interface -> Puppet.t -> 's -> t option) option ;
   (** [key_right_released self private_data] called when the right-arrow key is pressed *)
 
-  key_up_released : (Puppet.t -> 's -> t option) option ;
+  key_up_released : (board_interface -> Puppet.t -> 's -> t option) option ;
   (** [key_up_released self private_data] callback called when the up-arrow key is pressed *)
 
-  key_down_released : (Puppet.t -> 's -> t option) option ;
+  key_down_released : (board_interface -> Puppet.t -> 's -> t option) option ;
   (** [key_down_released self private_data] callback called when the down-arrow key is pressed *)
 }
 
 and script_state =
-  | BeginScript of (Puppet.t -> unit)
+  | BeginScript of (board_interface -> Puppet.t -> unit)
   (** [BeginScript script] Agent will subsequently begin executing [script] *)
   | RunningAgent of (Actions.action_result, Actions.action) Effect.Deep.continuation
   (** [RunningAgent cont] where [cont] may produce [Act] effects *)
@@ -48,16 +49,16 @@ and t = {
   name : string ;
   region_name : string option ;
   script_state : script_state ref ;
-  receive_bump : Puppet.t -> PuppetExternal.t -> t option ;
-  key_left_pressed : Puppet.t -> t option ;
-  key_right_pressed : Puppet.t -> t option ;
-  key_up_pressed : Puppet.t -> t option ;
-  key_down_pressed : Puppet.t -> t option ;
-  key_left_released : Puppet.t -> t option ;
-  key_right_released : Puppet.t -> t option ;
-  key_up_released : Puppet.t -> t option ;
-  key_down_released : Puppet.t -> t option ;
-  assert_invariants : Puppet.t -> unit
+  receive_bump : board_interface -> Puppet.t -> PuppetExternal.t -> t option ;
+  key_left_pressed : board_interface -> Puppet.t -> t option ;
+  key_right_pressed : board_interface -> Puppet.t -> t option ;
+  key_up_pressed : board_interface -> Puppet.t -> t option ;
+  key_down_pressed : board_interface -> Puppet.t -> t option ;
+  key_left_released : board_interface -> Puppet.t -> t option ;
+  key_right_released : board_interface -> Puppet.t -> t option ;
+  key_up_released : board_interface -> Puppet.t -> t option ;
+  key_down_released : board_interface -> Puppet.t -> t option ;
+  assert_invariants : board_interface -> Puppet.t -> unit
 }
 
 module type AgentStateClass = sig
@@ -96,6 +97,14 @@ let create (type s)
            (priv_data : s) : t =
 
   let module C = (val state_class : (AgentStateClass with type t_private_data = s)) in
+  let in_region (board : board_interface) (puppet : Puppet.t) : bool =
+    match C.region_name () with
+    | Some(region_name) ->
+      let r = board.get_region region_name in
+      Region.contains r (Puppet.get_pos puppet)
+    | None ->
+      true
+  in
   let state_functions = C.state_functions () in
   {
       name = C.name ();
@@ -103,79 +112,79 @@ let create (type s)
       script_state =
         ref begin match state_functions.script with
         | Some f ->
-          BeginScript(fun puppet -> f puppet priv_data)
+          BeginScript(fun board puppet -> f board puppet priv_data)
         | None ->
           Idling
         end;
       receive_bump =
         begin match state_functions.receive_bump with
         | Some f ->
-          (fun puppet puppet_ext -> f puppet priv_data puppet_ext)
+          (fun board puppet puppet_ext -> f board puppet priv_data puppet_ext)
         | None ->
-          (fun _ _ -> None)
+          (fun _ _ _ -> None)
         end;
       key_left_pressed =
         begin match state_functions.key_left_pressed with
         | Some f ->
-          (fun puppet -> f puppet priv_data)
+          (fun board puppet -> f board puppet priv_data)
         | None ->
-          (fun _ -> None)
+          (fun _ _ -> None)
         end;
       key_right_pressed =
         begin match state_functions.key_right_pressed with
         | Some f ->
-          (fun puppet -> f puppet priv_data)
+          (fun board puppet -> f board puppet priv_data)
         | None ->
-          (fun _ -> None)
+          (fun board _ -> None)
         end;
       key_up_pressed =
         begin match state_functions.key_up_pressed with
         | Some f ->
-          (fun puppet -> f puppet priv_data)
+          (fun board puppet -> f board puppet priv_data)
         | None ->
-          (fun _ -> None)
+          (fun _ _ -> None)
         end;
       key_down_pressed =
         begin match state_functions.key_down_pressed with
         | Some f ->
-          (fun puppet -> f puppet priv_data)
+          (fun board puppet -> f board puppet priv_data)
         | None ->
-          (fun _ -> None)
+          (fun _ _ -> None)
         end;
         key_left_released =
         begin match state_functions.key_left_released with
         | Some f ->
-          (fun puppet -> f puppet priv_data)
+          (fun board puppet -> f board puppet priv_data)
         | None ->
-          (fun _ -> None)
+          (fun _ _ -> None)
         end;
       key_right_released =
         begin match state_functions.key_right_released with
         | Some f ->
-          (fun puppet -> f puppet priv_data)
+          (fun board puppet -> f board puppet priv_data)
         | None ->
-          (fun _ -> None)
+          (fun _ _ -> None)
         end;
       key_up_released =
         begin match state_functions.key_up_released with
         | Some f ->
-          (fun puppet -> f puppet priv_data)
+          (fun board puppet -> f board puppet priv_data)
         | None ->
-          (fun _ -> None)
+          (fun _ _ -> None)
         end;
       key_down_released =
         begin match state_functions.key_down_released with
         | Some f ->
-          (fun puppet -> f puppet priv_data)
+          (fun board puppet -> f board puppet priv_data)
         | None ->
-          (fun _ -> None)
+          (fun _ _ -> None)
         end;
       assert_invariants =
         begin match state_functions.assert_invariants with
         | Some f ->
-          (fun puppet -> f puppet priv_data)
+          (fun board puppet -> f board puppet priv_data; assert (in_region board puppet))
         | None ->
-          (fun _ -> ())
+          (fun board puppet -> assert (in_region board puppet))
         end;
     }
 
@@ -185,7 +194,7 @@ let name (state : t) : string =
 let region_name (state : t) : string option =
   state.region_name
 
-let resume (state : t) (puppet : Puppet.t) (prev_result : Actions.action_result) : Actions.action =
+let resume (state : t) (board : board_interface) (puppet : Puppet.t) (prev_result : Actions.action_result) : Actions.action =
   let open Effect.Deep in
   let open Actions in
   match !(state.script_state) with
@@ -195,15 +204,15 @@ let resume (state : t) (puppet : Puppet.t) (prev_result : Actions.action_result)
     continue k prev_result
   | BeginScript script ->
     match_with
-      script
+      (script board)
       puppet
-      { retc = (fun _ -> state.assert_invariants puppet; state.script_state := Idling; Actions.Wait) ;
+      { retc = (fun _ -> state.assert_invariants board puppet; state.script_state := Idling; Actions.Wait) ;
         exnc = raise ;
         effc = fun (type a) (eff : a Effect.t) ->
           match eff with
           | Act action ->
             Some (function (k : (a, _) continuation) ->
-              state.assert_invariants puppet;
+              state.assert_invariants board puppet;
               state.script_state := RunningAgent k;
               action
             )
@@ -211,47 +220,47 @@ let resume (state : t) (puppet : Puppet.t) (prev_result : Actions.action_result)
             None
       }
 
-let receive_bump (state : t) (puppet : Puppet.t) (other : PuppetExternal.t) : t option =
-  let opt_new_state = state.receive_bump puppet other in
-  state.assert_invariants puppet;
+let receive_bump (state : t) (board : board_interface) (puppet : Puppet.t) (other : PuppetExternal.t) : t option =
+  let opt_new_state = state.receive_bump board puppet other in
+  state.assert_invariants board puppet;
   opt_new_state
 
-let key_left_pressed (state : t) (puppet : Puppet.t) : t option =
-  let opt_new_state = state.key_left_pressed puppet in
-  state.assert_invariants puppet;
+let key_left_pressed (state : t) (board : board_interface) (puppet : Puppet.t) : t option =
+  let opt_new_state = state.key_left_pressed board puppet in
+  state.assert_invariants board puppet;
   opt_new_state
 
-let key_up_pressed (state : t) (puppet : Puppet.t) : t option =
-  let opt_new_state = state.key_up_pressed puppet in
-  state.assert_invariants puppet;
+let key_up_pressed (state : t) (board : board_interface) (puppet : Puppet.t) : t option =
+  let opt_new_state = state.key_up_pressed board puppet in
+  state.assert_invariants board puppet;
   opt_new_state
 
-let key_right_pressed (state : t) (puppet : Puppet.t) : t option =
-  let opt_new_state = state.key_right_pressed puppet in
-  state.assert_invariants puppet;
+let key_right_pressed (state : t) (board : board_interface) (puppet : Puppet.t) : t option =
+  let opt_new_state = state.key_right_pressed board puppet in
+  state.assert_invariants board puppet;
   opt_new_state
 
-let key_down_pressed (state : t) (puppet : Puppet.t) : t option =
-  let opt_new_state = state.key_down_pressed puppet in
-  state.assert_invariants puppet;
+let key_down_pressed (state : t) (board : board_interface) (puppet : Puppet.t) : t option =
+  let opt_new_state = state.key_down_pressed board puppet in
+  state.assert_invariants board puppet;
   opt_new_state
 
-let key_left_released (state : t) (puppet : Puppet.t) : t option =
-  let opt_new_state = state.key_left_released puppet in
-  state.assert_invariants puppet;
+let key_left_released (state : t) (board : board_interface) (puppet : Puppet.t) : t option =
+  let opt_new_state = state.key_left_released board puppet in
+  state.assert_invariants board puppet;
   opt_new_state
 
-let key_up_released (state : t) (puppet : Puppet.t) : t option =
-  let opt_new_state = state.key_up_released puppet in
-  state.assert_invariants puppet;
+let key_up_released (state : t) (board : board_interface) (puppet : Puppet.t) : t option =
+  let opt_new_state = state.key_up_released board puppet in
+  state.assert_invariants board puppet;
   opt_new_state
 
-let key_right_released (state : t) (puppet : Puppet.t) : t option =
-  let opt_new_state = state.key_right_released puppet in
-  state.assert_invariants puppet;
+let key_right_released (state : t) (board : board_interface) (puppet : Puppet.t) : t option =
+  let opt_new_state = state.key_right_released board puppet in
+  state.assert_invariants board puppet;
   opt_new_state
 
-let key_down_released (state : t) (puppet : Puppet.t) : t option =
-  let opt_new_state = state.key_down_released puppet in
-  state.assert_invariants puppet;
+let key_down_released (state : t) (board : board_interface) (puppet : Puppet.t) : t option =
+  let opt_new_state = state.key_down_released board puppet in
+  state.assert_invariants board puppet;
   opt_new_state

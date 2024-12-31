@@ -1,5 +1,6 @@
 open Common
 open Region
+open BoardInterface
 
 let region_colors =
   Array.map
@@ -431,14 +432,21 @@ let update (board : t) : unit =
       let pos = Agent.position agent in
       let pos' = {x = pos.x + delta_x ; y = pos.y + delta_y} in
       begin
-        match not @@ is_occupied board pos' with
-        | true ->
+        match is_occupied board pos' with
+        | false ->
           set_agent board pos None;
           set_agent board pos' (Some agent);
           Agent.set_position agent pos';
           prev_result := Success
-        | false ->
-            prev_result := Failure;
+        | true ->
+          prev_result := Failure;
+          let occupied_cell = get_cell board pos' in
+          match occupied_cell.agent with
+          | Some(bump_target) ->
+            let puppet = Agent.puppet agent in
+            Agent.receive_bump bump_target (PuppetExternal.from puppet)
+          | None ->
+            ()
       end
     | Actions.Wait ->
       prev_result := Success
@@ -462,7 +470,11 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
   let agents = ref StringMap.empty in
   let board_intf = {
       get_waypoint = (fun (name : string) ->
-        StringMap.find name !(blueprint.waypoints));
+        StringMap.find name !(blueprint.waypoints)
+      );
+      get_region = (fun (name : string) ->
+        StringMap.find name !(blueprint.regions)
+      )
   } in
   let create_agent (agent_bp : Blueprint.agent_blueprint) : Agent.t =
     let module ThisAgentClass = (val (AgentClassMap.get agent_bp.agent_class_name) : AgentClass) in

@@ -1,22 +1,23 @@
 open Common
 open Agent
 open AgentState
+open BoardInterface
 
 let walk_north (puppet : Puppet.t) =
   Puppet.set_texture puppet (TextureMap.get "person2_north.png");
-  Actions.walk_north ()
+  Actions.weak_walk_north ()
 
 let walk_east (puppet : Puppet.t) =
   Puppet.set_texture puppet (TextureMap.get "person2_east.png");
-  Actions.walk_east ()
+  Actions.weak_walk_east ()
 
 let walk_south (puppet : Puppet.t) =
   Puppet.set_texture puppet (TextureMap.get "person2_south.png");
-  Actions.walk_south ()
+  Actions.weak_walk_south ()
 
 let walk_west (puppet : Puppet.t) =
   Puppet.set_texture puppet (TextureMap.get "person2_west.png");
-  Actions.walk_west ()
+  Actions.weak_walk_west ()
 
 type direction =
   | North
@@ -45,69 +46,7 @@ type walk_state = {
   (** Is the left arrow key held down? *)
 }
 
-module rec Idle : AgentStateClass with type t_private_data = unit = struct
-  (** Player is waiting for an arrow key press *)
-
-  type t_private_data = unit
-
-  let state_functions = fun () -> {
-    AgentState.empty_state_functions with
-      (* Initially start patrolling in a 2x2 square *)
-      key_up_pressed = Some (fun (me : Puppet.t) () ->
-        let init_walk_state = {
-          step_queue = Queue.create ();
-          direction = ref North;
-          up_down = ref true ;
-          right_down = ref false ;
-          down_down = ref false ;
-          left_down = ref false
-
-        } in
-        Some(AgentState.create (module Walking) init_walk_state)
-      ) ;
-      key_down_pressed = Some (fun (me : Puppet.t) () ->
-        let init_walk_state = {
-          step_queue = Queue.create ();
-          direction = ref South;
-          up_down = ref false ;
-          right_down = ref false ;
-          down_down = ref true ;
-          left_down = ref false
-
-        } in
-        Some(AgentState.create (module Walking) init_walk_state)
-      ) ;
-      key_left_pressed = Some (fun (me : Puppet.t) () ->
-        let init_walk_state = {
-          step_queue = Queue.create ();
-          direction = ref West;
-          up_down = ref false ;
-          right_down = ref false ;
-          down_down = ref false ;
-          left_down = ref true
-
-        } in
-        Some(AgentState.create (module Walking) init_walk_state)
-      ) ;
-      key_right_pressed = Some (fun (me : Puppet.t) () ->
-        let init_walk_state = {
-          step_queue = Queue.create ();
-          direction = ref East;
-          up_down = ref false ;
-          right_down = ref true ;
-          down_down = ref false ;
-          left_down = ref false
-
-        } in
-        Some(AgentState.create (module Walking) init_walk_state)
-      ) ;
-  }
-
-  let region_name = fun () -> None
-
-  let name = fun () -> "Idle"
-end
-and Walking : AgentStateClass with type t_private_data = walk_state = struct
+module Walking : AgentStateClass with type t_private_data = walk_state = struct
   (** After initial idle state, player transfers here to respond to arrow key presses *)
 
   type t_private_data = walk_state
@@ -145,7 +84,7 @@ and Walking : AgentStateClass with type t_private_data = walk_state = struct
   let state_functions = fun () -> {
     AgentState.empty_state_functions with
       (* Initially start patrolling in a 2x2 square *)
-      script = Some (fun (me : Puppet.t) (s : walk_state) ->
+      script = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state) ->
         while true do
           while not (Queue.is_empty s.step_queue) do
             walk me (Queue.pop s.step_queue)
@@ -153,46 +92,46 @@ and Walking : AgentStateClass with type t_private_data = walk_state = struct
           walk me !(s.direction)
         done;
       ) ;
-      key_left_pressed = Some (fun (me : Puppet.t) (s : walk_state) ->
+      key_left_pressed = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state) ->
         Queue.push West s.step_queue;
         s.left_down := true;
         update_direction me s West;
         None
       );
-      key_right_pressed = Some (fun (me : Puppet.t) (s : walk_state) ->
+      key_right_pressed = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state) ->
         Queue.push East s.step_queue;
         s.right_down := true;
         update_direction me s East;
         None
       );
-      key_up_pressed = Some (fun (me : Puppet.t) (s : walk_state) ->
+      key_up_pressed = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state) ->
         Queue.push North s.step_queue;
         s.up_down := true;
         update_direction me s North;
         None
       );
-      key_down_pressed = Some (fun (me : Puppet.t) (s : walk_state) ->
+      key_down_pressed = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state) ->
         Queue.push South s.step_queue;
         s.down_down := true;
         update_direction me s South;
         None
       );
-      key_up_released = Some (fun (me : Puppet.t) (s : walk_state) ->
+      key_up_released = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state) ->
         s.up_down := false;
         update_direction me s North;
         None
       );
-      key_right_released = Some (fun (me : Puppet.t) (s : walk_state) ->
+      key_right_released = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state) ->
         s.right_down := false;
         update_direction me s East;
         None
       );
-      key_down_released = Some (fun (me : Puppet.t) (s : walk_state) ->
+      key_down_released = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state) ->
         s.down_down := false;
         update_direction me s South;
         None
       );
-      key_left_released = Some (fun (me : Puppet.t) (s : walk_state) ->
+      key_left_released = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state) ->
         s.left_down := false;
         update_direction me s West;
         None
@@ -204,30 +143,8 @@ and Walking : AgentStateClass with type t_private_data = walk_state = struct
   let name = fun () -> "Idle"
 end
 
-module rec Controlled : AgentStateClass with type t_private_data = unit = struct
-  (** Player is being controlled by arrow keys *)
-
-  type t_private_data = unit
-
-  let state_functions = fun () -> {
-    AgentState.empty_state_functions with
-      (* Initially start patrolling in a 2x2 square *)
-      script = Some (fun (me : Puppet.t) () ->
-        while true do
-          walk_north me;
-          walk_south me;
-        done;
-      )
-  }
-
-  let region_name = fun () -> None
-
-  let name = fun () -> "Controlled"
-end
-
 module Player : AgentClass = struct
   let states = StringMap.of_list [
-    ("Idle", (module Idle : AgentStateClass)) ;
     ("Walking", (module Walking : AgentStateClass))
   ]
 
@@ -249,7 +166,7 @@ module Player : AgentClass = struct
 
   let speed = 0.8
 
-  let name = "Player"
+  let name = "player"
 end
 
 include Player

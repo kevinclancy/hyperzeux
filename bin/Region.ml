@@ -19,9 +19,18 @@ type region_component = {
 type region = {
 (** A set of board cells *)
 
-description : string ref ;
-(** A description of the region *)
+  description : string ref ;
+  (** A description of the region *)
 
-components : (region_component StringMap.t) ref
-(** The rectangles the constitute the region *)
+  components : (region_component StringMap.t) ref
+  (** The rectangles the constitute the region *)
 }
+
+let contains (r : region) (p : position) : bool =
+  (** Does region [r] contain position [p]? *)
+  let {x ; y} = p in
+  let component_contains (_ : string) (c : region_component) : bool =
+    (** Does component [c] contain position [p]? *)
+    c.left <= x && c.top <= y && c.bottom >= y && c.right >= x
+  in
+  StringMap.exists component_contains !(r.components)

@@ -25,10 +25,18 @@ let walk (dx : int) (dy : int) =
     end
   done
 
+let weak_walk (dx : int) (dy : int) =
+  ignore @@ Effect.perform @@ Act (Walk (dx, dy))
+
 let walk_north () = walk 0 (-1)
 let walk_east () = walk 1 0
 let walk_south () = walk 0 1
 let walk_west () = walk (-1) 0
+
+let weak_walk_north () = weak_walk 0 (-1)
+let weak_walk_east () = weak_walk 1 0
+let weak_walk_south () = weak_walk 0 1
+let weak_walk_west () = weak_walk (-1) 0
 
 let wait (n : int) =
   for i = 1 to n do

@@ -95,6 +95,7 @@ let () =
   TextureMap.load "plant_2.png";
   TextureMap.load "waypoint.png";
 
+  AgentClassMap.add (module Agents.Button);
   AgentClassMap.add (module Agents.Patroller);
   AgentClassMap.add (module Agents.Player);
 

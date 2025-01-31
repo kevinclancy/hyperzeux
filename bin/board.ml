@@ -426,6 +426,7 @@ let draw (board : t) (pos : Raylib.Vector2.t) (scale : float) : unit =
 let update (board : t) : unit =
   let open Raylib in
   let update_agent (_ : string) ((agent, prev_result) : Agent.t * Actions.action_result ref) : unit =
+    Agent.handle_messages agent;
     Agent.update_input agent;
     match Agent.resume agent !prev_result with
     | Actions.Walk (delta_x, delta_y) ->

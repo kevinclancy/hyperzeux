@@ -64,7 +64,7 @@ let create (board : board_interface)
 let name (agent : t) : string =
   Puppet.get_name agent.puppet
 
-let agent_class (agent : t) =
+let agent_class (agent : t) : (module AgentClass) =
   agent.agent_class
 
 let update_input (agent : t) : unit =
@@ -94,6 +94,13 @@ let update_input (agent : t) : unit =
 let receive_bump (agent : t) (other : PuppetExternal.t) : unit =
   let opt_new_state = AgentState.receive_bump !(agent.agent_state) agent.board agent.puppet other in
   Option.iter (fun state -> agent.agent_state := state) opt_new_state
+
+let handle_messages (agent : t) : unit =
+  match AgentState.handle_messages !(agent.agent_state) agent.board agent.puppet with
+  | Some(new_state) ->
+    agent.agent_state := new_state
+  | None ->
+    ()
 
 let rec resume (agent : t) (prev_result : Actions.action_result) : Actions.action =
   let open Effect.Deep in

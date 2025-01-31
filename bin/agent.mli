@@ -55,3 +55,6 @@ val receive_bump : t -> PuppetExternal.t -> unit
 val resume : t -> Actions.action_result -> Actions.action
 (** [resume agent prev_action_result] Resumes [agent]'s script, providing the result of its previous action
     [prev_action_result] to the script's current context. *)
+
+val handle_messages : t -> unit
+(** Handle all messages from incoming channels *)

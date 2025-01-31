@@ -1,10 +1,14 @@
 open BoardInterface
 
-type 's state_functions = {
+type channel_handler = (t option, board_interface * Puppet.t) Channel.t_in_handler
+
+and 's state_functions = {
   (** Functions for controlling an agent, where ['s] is the type of the agent's private data, i.e. its "memory" *)
 
   script : (board_interface -> Puppet.t -> 's -> unit) option ;
   (** Coroutine to run while in this state, or None to idle *)
+
+  create_handlers : ('s -> channel_handler list) option ;
 
   assert_invariants : (board_interface -> Puppet.t -> 's -> unit) option ;
   (** Function to call to assert state invariants. None means there are no assertable invariants. *)
@@ -48,6 +52,7 @@ and script_state =
 and t = {
   name : string ;
   region_name : string option ;
+  handlers : channel_handler list ;
   script_state : script_state ref ;
   receive_bump : board_interface -> Puppet.t -> PuppetExternal.t -> t option ;
   key_left_pressed : board_interface -> Puppet.t -> t option ;
@@ -80,6 +85,7 @@ end
 
 let empty_state_functions = {
   script = None ;
+  create_handlers = None ;
   receive_bump = None ;
   assert_invariants = None ;
   key_left_pressed = None ;
@@ -109,6 +115,13 @@ let create (type s)
   {
       name = C.name ();
       region_name = C.region_name ();
+      handlers = begin
+        match state_functions.create_handlers with
+        | Some(f) ->
+          f priv_data
+        | None ->
+          []
+      end;
       script_state =
         ref begin match state_functions.script with
         | Some f ->
@@ -151,7 +164,7 @@ let create (type s)
         | None ->
           (fun _ _ -> None)
         end;
-        key_left_released =
+      key_left_released =
         begin match state_functions.key_left_released with
         | Some f ->
           (fun board puppet -> f board puppet priv_data)
@@ -219,6 +232,16 @@ let resume (state : t) (board : board_interface) (puppet : Puppet.t) (prev_resul
           | _ ->
             None
       }
+
+let handle_messages (state : t) (board : board_interface) (puppet : Puppet.t) : t option =
+  let handle_channel (handler : channel_handler) : t option =
+    let res = ref None in
+    while not (Channel.is_empty handler || Option.is_some !res) do
+      res := Channel.handle_one handler (board, puppet);
+    done;
+    !res
+  in
+  List.find_map handle_channel state.handlers
 
 let receive_bump (state : t) (board : board_interface) (puppet : Puppet.t) (other : PuppetExternal.t) : t option =
   let opt_new_state = state.receive_bump board puppet other in

@@ -2,6 +2,7 @@ open Common
 open Agent
 open AgentState
 open BoardInterface
+open Channels
 
 let walk_north (puppet : Puppet.t) =
   Puppet.set_texture puppet (TextureMap.get "person_north_recon.png");
@@ -24,7 +25,6 @@ module rec Patrolling : AgentStateClass with type t_private_data = unit = struct
 
   let state_functions = fun () -> {
     AgentState.empty_state_functions with
-      (* Initially start patrolling in a 2x2 square *)
       script = Some (fun (board : board_interface) (me : Puppet.t) () ->
         while true do
           walk_north me;
@@ -40,12 +40,19 @@ module rec Patrolling : AgentStateClass with type t_private_data = unit = struct
           walk_west me;
         done;
       );
+      create_handlers = Some(fun () ->
+        [
+          Channel.attach_handler (Buzzer.channel) (fun () (board, puppet) ->
+            Some(AgentState.create (module FreakingOut) ())
+          )
+        ]
+      );
       receive_bump = Some(fun (board : board_interface) (me : Puppet.t) () (other : PuppetExternal.t) ->
         Some(AgentState.create (module FreakingOut) ())
       )
   }
 
-  let region_name = fun () -> Some "patrol_area"
+  let region_name = fun () -> None
 
   let name = fun () -> "Patrolling"
 end
@@ -54,7 +61,6 @@ and FreakingOut : AgentStateClass with type t_private_data = unit = struct
 
   let state_functions = fun () -> {
     AgentState.empty_state_functions with
-      (* Initially start patrolling in a 2x2 square *)
       script = Some (fun (board : board_interface) (me : Puppet.t) () ->
         while true do
           walk_north me;
@@ -67,14 +73,15 @@ and FreakingOut : AgentStateClass with type t_private_data = unit = struct
       )
   }
 
-  let region_name = fun () -> Some "patrol_area"
+  let region_name = fun () -> None
 
   let name = fun () -> "Freaking Out"
 end
 
 module Patroller : AgentClass = struct
   let states = StringMap.of_list [
-    ("Patrolling", (module Patrolling : AgentStateClass))
+    ("Patrolling", (module Patrolling : AgentStateClass)) ;
+    ("FreakingOut", (module FreakingOut : AgentStateClass))
   ]
 
   let initial_state = AgentState.create (module Patrolling) ()

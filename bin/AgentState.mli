@@ -11,6 +11,8 @@ type 's state_functions = {
   script : (board_interface -> Puppet.t -> 's -> unit) option ;
   (** Coroutine to run while in this state, or None to idle *)
 
+  create_handlers : ('s -> ((t option, board_interface * Puppet.t) Channel.t_in_handler) list) option ;
+
   assert_invariants : (board_interface -> Puppet.t -> 's -> unit) option ;
   (** Function to call to assert state invariants. None means there are no assertable invariants. *)
 
@@ -72,6 +74,23 @@ val region_name : t -> string option
 val resume : t -> board_interface -> Puppet.t -> Actions.action_result -> Actions.action
 (** [resume state prev_result] Resume the [state]'s coroutine, where [prev_result] tells whether
     the previously yielded action suceeded *)
+
+val handle_messages : t -> board_interface -> Puppet.t -> t option
+(** [handle_messages state board_interface self] handles incoming messages until one of the two conditions is encountered:
+
+    * All message queues are empty. In this case, return None.
+
+    * A message handler returns [Some(new_state)], triggering a state change to [new_state].
+      In this case, [handle_messages] returns [Some(new_state)]
+
+    where
+
+    * [state] is the current agent's current state
+
+    * [board_interface] is the current agent's view of the board
+
+    * [self] is the current agent's puppet
+*)
 
 val receive_bump : t -> board_interface -> Puppet.t -> PuppetExternal.t -> t option
 (** [receive_bump state other] called when the [other] puppet bumps into the puppet that [state] is controlling *)

@@ -77,31 +77,14 @@ and freaking_out_state : unit AgentState.blueprint = {
   }
 }
 
-module Patroller : AgentClass = struct
-  let states = StringMap.of_list [
+let patroller_class : agent_class = {
+  states = StringMap.of_list [
     ("Patrolling", patrolling_state.props) ;
     ("Freaking Out", freaking_out_state.props)
-  ]
-
-  let initial_state = AgentState.create patrolling_state ()
-
-  let preview_texture_name = "person_south_recon.png"
-
-  let preview_color = Raylib.Color.white
-
-  let speed = 0.3
-
-  let name = "patroller"
-end
-
-include Patroller
-
-(* let create (board_intf : board_interface) (agent_name : string) (pos : position) (color : Raylib.Color.t) : Agent.t =
-  Agent.create
-    board_intf
-    (module Patroller)
-    (module Patrolling)
-    agent_name
-    ~speed:0.3
-    pos
-    color *)
+  ];
+  initial_state = AgentState.create patrolling_state () ;
+  preview_texture_name = "person_south_recon.png" ;
+  preview_color = Raylib.Color.white ;
+  speed = 0.3 ;
+  name = "patroller"
+}

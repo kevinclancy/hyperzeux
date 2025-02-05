@@ -478,8 +478,8 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
       )
   } in
   let create_agent (agent_bp : Blueprint.agent_blueprint) : Agent.t =
-    let module ThisAgentClass = (val (AgentClassMap.get agent_bp.agent_class_name) : AgentClass) in
-    Agent.create board_intf (module ThisAgentClass) (ThisAgentClass.initial_state) agent_bp.agent_name agent_bp.pos agent_bp.color
+    let agent_class = AgentClassMap.get agent_bp.agent_class_name in
+    Agent.create board_intf agent_class agent_bp.agent_name agent_bp.pos agent_bp.color
   in
   agents := StringMap.map (fun x -> (create_agent x, ref Actions.Success)) !(blueprint.agents);
   let add_agent (_ : string) ((agent, _) : Agent.t * Actions.action_result ref) : unit =

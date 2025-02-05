@@ -65,13 +65,12 @@ let () = Printexc.record_backtrace true
 let get_static_obj () : static_object option =
   GuiTools.get_item StaticObjectMap.search (fun o -> o.name) (fun o -> TextureMap.get o.texture_name)
 
-let get_agent_class () : (module AgentClass) option =
+let get_agent_class () : agent_class option =
   GuiTools.get_item
     AgentClassMap.search
-    (fun (c : (module AgentClass)) ->
-      let module M = (val c : AgentClass) in M.name)
-    (fun (c : (module AgentClass)) ->
-      let module M = (val c : AgentClass) in TextureMap.get M.preview_texture_name)
+    (fun (c : agent_class) -> c.name)
+    (fun (c : agent_class) ->
+      TextureMap.get c.preview_texture_name)
 
 let () =
   Printexc.record_backtrace true;
@@ -95,9 +94,9 @@ let () =
   TextureMap.load "plant_2.png";
   TextureMap.load "waypoint.png";
 
-  AgentClassMap.add (module Agents.Button);
-  AgentClassMap.add (module Agents.Patroller);
-  AgentClassMap.add (module Agents.Player);
+  AgentClassMap.add Agents.Button.button_class;
+  AgentClassMap.add Agents.Patroller.patroller_class;
+  AgentClassMap.add Agents.Player.player_class;
 
   StaticObjectMap.add { name = "empty" ; texture_name = "empty_cell.png" ; traversable = true };
   StaticObjectMap.add { name = "wall" ; texture_name = "solid_wall.png" ; traversable = false };

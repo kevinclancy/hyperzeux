@@ -145,12 +145,13 @@ let state_walking : walk_state_private AgentState.blueprint =
     }
   }
 
-module Player : AgentClass = struct
-  let states = StringMap.of_list [
+let player_class : Agent.agent_class = {
+  states = StringMap.of_list [
     ("Walking", state_walking.props)
-  ]
+  ];
 
-  let initial_state =
+  initial_state =
+    begin
     let init_private = {
       step_queue = Queue.create ();
       direction = ref Idle;
@@ -159,16 +160,14 @@ module Player : AgentClass = struct
       down_down = ref false ;
       left_down = ref false
     } in
-
     AgentState.create state_walking init_private
+    end;
 
-  let preview_texture_name = "person2_south.png"
+  preview_texture_name = "person2_south.png";
 
-  let preview_color = Raylib.Color.skyblue
+  preview_color = Raylib.Color.skyblue;
 
-  let speed = 0.8
+  speed = 0.8;
 
-  let name = "player"
-end
-
-include Player
+  name = "player";
+}

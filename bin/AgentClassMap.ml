@@ -1,6 +1,6 @@
 open Agent
 
-let map = OrdMap.create (fun (m : (module AgentClass)) -> let module M = (val m : AgentClass) in M.name)
+let map = OrdMap.create (fun (m : agent_class) -> m.name)
 
 let add = OrdMap.add map
 

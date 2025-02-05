@@ -19,20 +19,18 @@ let idle_state = {
   }
 }
 
-module Button : AgentClass = struct
-  let states = StringMap.of_list [
+let button_class : agent_class = {
+  states = StringMap.of_list [
     ("Idle", idle_state.props) ;
-  ]
+  ];
 
-  let initial_state = AgentState.create idle_state ()
+  initial_state = AgentState.create idle_state ();
 
-  let preview_texture_name = "person_south_recon.png"
+  preview_texture_name = "person_south_recon.png";
 
-  let preview_color = Raylib.Color.red
+  preview_color = Raylib.Color.red;
 
-  let speed = 0.3
+  speed = 0.3;
 
-  let name = "button"
-end
-
-include Button
+  name = "button"
+}

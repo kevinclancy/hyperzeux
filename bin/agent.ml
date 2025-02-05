@@ -2,28 +2,26 @@ open Common
 open AgentState
 open BoardInterface
 
-module type AgentClass = sig
-  val states : AgentState.blueprint_props StringMap.t
-  (** Maps name of each state that agents of this class can enter to the state itself *)
+type agent_class = {
+  states : AgentState.blueprint_props StringMap.t ;
+  (** Maps name of each state that agents of this agent class can enter to the state itself *)
 
-  val initial_state : AgentState.t
+  initial_state : AgentState.t ;
   (** The state that the agent starts out in *)
 
-  val preview_texture_name : string
+  preview_texture_name : string ;
   (** The name of the texture used to represent the agent class in the map editor *)
 
-  val preview_color : Raylib.Color.t
+  preview_color : Raylib.Color.t ;
   (** The color that the preview texture is drawn in the map editor *)
 
-  val speed : float
+  speed : float ;
 
-  val name : string
+  name : string
   (** The name of the agent class *)
-end
+}
 
 type t = {
-  agent_class : (module AgentClass) ;
-
   puppet : Puppet.t ;
   (** The physical body this agent controls *)
 
@@ -41,31 +39,25 @@ type t = {
 }
 
 let create (board : board_interface)
-           (agent_class : (module AgentClass))
-           (initial_state : AgentState.t)
+           (template : agent_class)
            (name : string)
            (position : position)
            (color : Raylib.Color.t)
            : t =
 
-  let module C = (val agent_class : AgentClass) in
-  let puppet = Puppet.create name position color (TextureMap.get C.preview_texture_name) in
+  let puppet = Puppet.create name position color (TextureMap.get template.preview_texture_name) in
   {
-    agent_class ;
     board ;
-    agent_state = ref initial_state ;
+    agent_state = ref template.initial_state ;
     puppet ;
     action_meter = ref 0.;
-    speed  = ref C.speed;
+    speed  = ref template.speed;
   }
 
 (** [create board_intf name pos color] Creates an agent named [name] at position [pos] with color [color] *)
 
 let name (agent : t) : string =
   Puppet.get_name agent.puppet
-
-let agent_class (agent : t) : (module AgentClass) =
-  agent.agent_class
 
 let update_input (agent : t) : unit =
   let open Raylib in

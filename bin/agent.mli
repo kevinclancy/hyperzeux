@@ -4,33 +4,32 @@ open BoardInterface
 
 type t
 
-module type AgentClass = sig
-  val states : AgentState.blueprint_props StringMap.t
+type agent_class = {
+  states : AgentState.blueprint_props StringMap.t ;
   (** Maps name of each state that agents of this class can enter to the state itself *)
 
-  val initial_state : AgentState.t
+  initial_state : AgentState.t ;
   (** The state that the agent starts out in *)
 
-  val preview_texture_name : string
+  preview_texture_name : string ;
   (** The name of the texture used to represent the agent class in the map editor *)
 
-  val preview_color : Raylib.Color.t
+  preview_color : Raylib.Color.t ;
   (** The color that the preview texture is drawn in the map editor *)
 
-  val speed : float
+  speed : float ;
 
-  val name : string
+  name : string ;
   (** The name of the agent class *)
-end
+}
 
 val create : board_interface ->
-             (module AgentClass) ->
-             AgentState.t ->
+             agent_class ->
              string ->
              Common.position ->
              Raylib.Color.t ->
              t
-(** [create board agent_class initial_state name speed pos color] Creates an agent *)
+(** [create board agent_template name speed pos color] Creates an agent *)
 
 val name : t -> string
 
@@ -43,8 +42,6 @@ val puppet : t -> Puppet.t
 val set_position : t -> position -> unit
 
 val texture : t -> Raylib.Texture.t
-
-val agent_class : t -> (module AgentClass)
 
 val update_input : t -> unit
 (** Update agent state in response to user input *)

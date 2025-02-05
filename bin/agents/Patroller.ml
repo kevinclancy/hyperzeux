@@ -20,10 +20,8 @@ let walk_west (puppet : Puppet.t) =
   Puppet.set_texture puppet (TextureMap.get "person_west_recon.png");
   Actions.walk_west ()
 
-module rec Patrolling : AgentStateClass with type t_private_data = unit = struct
-  type t_private_data = unit
-
-  let state_functions = fun () -> {
+let rec patrolling_state : unit AgentState.blueprint = {
+  state_functions = {
     AgentState.empty_state_functions with
       script = Some (fun (board : board_interface) (me : Puppet.t) () ->
         while true do
@@ -43,23 +41,23 @@ module rec Patrolling : AgentStateClass with type t_private_data = unit = struct
       create_handlers = Some(fun () ->
         [
           Channel.attach_handler (Buzzer.channel) (fun () (board, puppet) ->
-            Some(AgentState.create (module FreakingOut) ())
+            Some(AgentState.create freaking_out_state ())
           )
         ]
       );
       receive_bump = Some(fun (board : board_interface) (me : Puppet.t) () (other : PuppetExternal.t) ->
-        Some(AgentState.create (module FreakingOut) ())
+        Some(AgentState.create freaking_out_state ())
       )
+  };
+
+  props = {
+    region_name = None ;
+    name = "Patrolling"
   }
+}
 
-  let region_name = fun () -> None
-
-  let name = fun () -> "Patrolling"
-end
-and FreakingOut : AgentStateClass with type t_private_data = unit = struct
-  type t_private_data = unit
-
-  let state_functions = fun () -> {
+and freaking_out_state : unit AgentState.blueprint = {
+  state_functions = {
     AgentState.empty_state_functions with
       script = Some (fun (board : board_interface) (me : Puppet.t) () ->
         while true do
@@ -69,22 +67,23 @@ and FreakingOut : AgentStateClass with type t_private_data = unit = struct
         done;
       );
       key_up_pressed = Some(fun (board : board_interface) (me : Puppet.t) () ->
-        Some(AgentState.create (module Patrolling) ())
+        Some(AgentState.create patrolling_state ())
       )
+  };
+
+  props = {
+    region_name = None ;
+    name = "Freaking Out"
   }
-
-  let region_name = fun () -> None
-
-  let name = fun () -> "Freaking Out"
-end
+}
 
 module Patroller : AgentClass = struct
   let states = StringMap.of_list [
-    ("Patrolling", (module Patrolling : AgentStateClass)) ;
-    ("FreakingOut", (module FreakingOut : AgentStateClass))
+    ("Patrolling", patrolling_state.props) ;
+    ("Freaking Out", freaking_out_state.props)
   ]
 
-  let initial_state = AgentState.create (module Patrolling) ()
+  let initial_state = AgentState.create patrolling_state ()
 
   let preview_texture_name = "person_south_recon.png"
 

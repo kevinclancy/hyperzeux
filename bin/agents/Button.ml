@@ -4,28 +4,27 @@ open AgentState
 open BoardInterface
 open Channels
 
-module Idle : AgentStateClass with type t_private_data = unit = struct
-  type t_private_data = unit
-
-  let state_functions = fun () -> {
+let idle_state = {
+  state_functions = {
     AgentState.empty_state_functions with
       receive_bump = Some(fun (board : board_interface) (me : Puppet.t) () (other : PuppetExternal.t) ->
         Channel.send_msg Buzzer.channel ();
         None
       )
+  };
+
+  props = {
+    region_name = None ;
+    name = "Idle"
   }
-
-  let region_name = fun () -> None
-
-  let name = fun () -> "Idle"
-end
+}
 
 module Button : AgentClass = struct
   let states = StringMap.of_list [
-    ("Idle", (module Idle : AgentStateClass)) ;
+    ("Idle", idle_state.props) ;
   ]
 
-  let initial_state = AgentState.create (module Idle) ()
+  let initial_state = AgentState.create idle_state ()
 
   let preview_texture_name = "person_south_recon.png"
 

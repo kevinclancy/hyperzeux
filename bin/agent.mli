@@ -5,7 +5,7 @@ open BoardInterface
 type t
 
 module type AgentClass = sig
-  val states : (module AgentStateClass) StringMap.t
+  val states : AgentState.blueprint_props StringMap.t
   (** Maps name of each state that agents of this class can enter to the state itself *)
 
   val initial_state : AgentState.t

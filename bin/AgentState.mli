@@ -46,24 +46,30 @@ type 's state_functions = {
 
 val empty_state_functions : 's state_functions
 
-module type AgentStateClass = sig
-  (** Definition of a state of an agent. *)
+type blueprint_props = {
+  (** Properties shared by all agent state blueprints, regardless of private data type *)
 
-  type t_private_data
-  (** Type of private data of an instance of this agent state *)
-
-  val state_functions : unit -> t_private_data state_functions
-  (** Functions for interacting with agents in this state, where 't is the agent type *)
-
-  val region_name : unit -> string option
+  region_name : string option ;
   (** Name of region that the agent is expected to remain within while in this state,
       or None if no such expectation exists *)
 
-  val name : unit -> string
+  name : string
   (** The name of this state *)
-end
+}
 
-val create : (module AgentStateClass with type t_private_data = 's) -> 's -> t
+type 's blueprint = {
+  (** Agent state blueprint, where ['s] is the type of the agent state's private data *)
+
+  state_functions : 's state_functions ;
+  (** Functions for interacting with agents in this state *)
+
+  props : blueprint_props
+  (** Properties shared by all agent state blueprints, regardless of private data type *)
+}
+
+val create : 's blueprint -> 's -> t
+(** [create blueprint initial_state] Creates a new agent state from [blueprint]
+    using [initial_state] as initial state *)
 
 val name : t -> string
 (** [state_name s] is the name of the state [s] *)

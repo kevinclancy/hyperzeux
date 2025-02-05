@@ -66,22 +66,26 @@ and t = {
   assert_invariants : board_interface -> Puppet.t -> unit
 }
 
-module type AgentStateClass = sig
-  (** Definition of a state of an agent. *)
+type blueprint_props = {
+  (** Properties shared by all agent state blueprints, regardless of private data type *)
 
-  type t_private_data
-  (** Type of private data of an instance of this agent state *)
-
-  val state_functions : unit -> t_private_data state_functions
-  (** Functions for interacting with agents in this state, where 't is the agent type *)
-
-  val region_name : unit -> string option
+  region_name : string option ;
   (** Name of region that the agent is expected to remain within while in this state,
       or None if no such expectation exists *)
 
-  val name : unit -> string
+  name : string
   (** The name of this state *)
-end
+}
+
+type 's blueprint = {
+  (** Agent state blueprint, where ['s] is the type of the agent state's private data *)
+
+  state_functions : 's state_functions ;
+  (** Functions for interacting with agents in this state *)
+
+  props : blueprint_props
+  (** Properties shared by all agent state blueprints, regardless of private data type *)
+}
 
 let empty_state_functions = {
   script = None ;
@@ -98,23 +102,21 @@ let empty_state_functions = {
   key_down_released = None
 }
 
-let create (type s)
-           (state_class : (module AgentStateClass with type t_private_data = s))
-           (priv_data : s) : t =
+let create (state_bp : 's blueprint)
+           (priv_data : 's) : t =
 
-  let module C = (val state_class : (AgentStateClass with type t_private_data = s)) in
   let in_region (board : board_interface) (puppet : Puppet.t) : bool =
-    match C.region_name () with
+    match state_bp.props.region_name with
     | Some(region_name) ->
       let r = board.get_region region_name in
       Region.contains r (Puppet.get_pos puppet)
     | None ->
       true
   in
-  let state_functions = C.state_functions () in
+  let state_functions = state_bp.state_functions in
   {
-      name = C.name ();
-      region_name = C.region_name ();
+      name = state_bp.props.name ;
+      region_name = state_bp.props.region_name ;
       handlers = begin
         match state_functions.create_handlers with
         | Some(f) ->

@@ -26,7 +26,7 @@ type direction =
   | West
   | Idle
 
-type walk_state = {
+type walk_state_private = {
   step_queue : direction Queue.t ;
   (** The player must now respond to unhandled key presses by taking steps in these directions. *)
 
@@ -46,10 +46,8 @@ type walk_state = {
   (** Is the left arrow key held down? *)
 }
 
-module Walking : AgentStateClass with type t_private_data = walk_state = struct
+let state_walking : walk_state_private AgentState.blueprint =
   (** After initial idle state, player transfers here to respond to arrow key presses *)
-
-  type t_private_data = walk_state
 
   let walk (me : Puppet.t) (d : direction) : unit =
     match d with
@@ -63,8 +61,9 @@ module Walking : AgentStateClass with type t_private_data = walk_state = struct
       walk_west me
     | Idle ->
       Actions.wait 1
+  in
 
-  let update_direction (me : Puppet.t) (s : walk_state) (key_dir : direction) : unit =
+  let update_direction (me : Puppet.t) (s : walk_state_private) (key_dir : direction) : unit =
     (** If a single arrow key is held down after pressing or releasing an arrow key, change [direction] field to the held key's direction *)
     begin match !(s.up_down), !(s.left_down), !(s.right_down), !(s.down_down) with
     | (true, false, false, false) ->
@@ -80,85 +79,88 @@ module Walking : AgentStateClass with type t_private_data = walk_state = struct
     | _ ->
       ()
     end
+  in
 
-  let state_functions = fun () -> {
-    AgentState.empty_state_functions with
-      (* Initially start patrolling in a 2x2 square *)
-      script = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state) ->
-        while true do
-          while not (Queue.is_empty s.step_queue) do
-            walk me (Queue.pop s.step_queue)
+  {
+    state_functions = {
+      AgentState.empty_state_functions with
+        (* Initially start patrolling in a 2x2 square *)
+        script = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state_private) ->
+          while true do
+            while not (Queue.is_empty s.step_queue) do
+              walk me (Queue.pop s.step_queue)
+            done;
+            walk me !(s.direction)
           done;
-          walk me !(s.direction)
-        done;
-      ) ;
-      key_left_pressed = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state) ->
-        Queue.push West s.step_queue;
-        s.left_down := true;
-        update_direction me s West;
-        None
-      );
-      key_right_pressed = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state) ->
-        Queue.push East s.step_queue;
-        s.right_down := true;
-        update_direction me s East;
-        None
-      );
-      key_up_pressed = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state) ->
-        Queue.push North s.step_queue;
-        s.up_down := true;
-        update_direction me s North;
-        None
-      );
-      key_down_pressed = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state) ->
-        Queue.push South s.step_queue;
-        s.down_down := true;
-        update_direction me s South;
-        None
-      );
-      key_up_released = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state) ->
-        s.up_down := false;
-        update_direction me s North;
-        None
-      );
-      key_right_released = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state) ->
-        s.right_down := false;
-        update_direction me s East;
-        None
-      );
-      key_down_released = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state) ->
-        s.down_down := false;
-        update_direction me s South;
-        None
-      );
-      key_left_released = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state) ->
-        s.left_down := false;
-        update_direction me s West;
-        None
-      );
+        ) ;
+        key_left_pressed = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state_private) ->
+          Queue.push West s.step_queue;
+          s.left_down := true;
+          update_direction me s West;
+          None
+        );
+        key_right_pressed = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state_private) ->
+          Queue.push East s.step_queue;
+          s.right_down := true;
+          update_direction me s East;
+          None
+        );
+        key_up_pressed = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state_private) ->
+          Queue.push North s.step_queue;
+          s.up_down := true;
+          update_direction me s North;
+          None
+        );
+        key_down_pressed = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state_private) ->
+          Queue.push South s.step_queue;
+          s.down_down := true;
+          update_direction me s South;
+          None
+        );
+        key_up_released = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state_private) ->
+          s.up_down := false;
+          update_direction me s North;
+          None
+        );
+        key_right_released = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state_private) ->
+          s.right_down := false;
+          update_direction me s East;
+          None
+        );
+        key_down_released = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state_private) ->
+          s.down_down := false;
+          update_direction me s South;
+          None
+        );
+        key_left_released = Some (fun (board : board_interface) (me : Puppet.t) (s : walk_state_private) ->
+          s.left_down := false;
+          update_direction me s West;
+          None
+        );
+    };
+
+    props = {
+      region_name = None;
+      name = "Idle"
+    }
   }
-
-  let region_name = fun () -> None
-
-  let name = fun () -> "Idle"
-end
 
 module Player : AgentClass = struct
   let states = StringMap.of_list [
-    ("Walking", (module Walking : AgentStateClass))
+    ("Walking", state_walking.props)
   ]
 
   let initial_state =
-    let walking_state = {
+    let init_private = {
       step_queue = Queue.create ();
       direction = ref Idle;
       up_down = ref false ;
       right_down = ref false ;
       down_down = ref false ;
       left_down = ref false
-
     } in
-    AgentState.create (module Walking) walking_state
+
+    AgentState.create state_walking init_private
 
   let preview_texture_name = "person2_south.png"
 

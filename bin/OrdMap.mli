@@ -1,38 +1,46 @@
-(** A map containing elements of type ['a], which allows us to look up an element
-    using either its name or the natural number [n] where the element was the
-    [n]th element added to the map.  *)
-type 'a t
 
-(** [create get_name] Creates a new OrdMap of element type ['a],
-    where [get_name elem] gets the name of an element. *)
-val create : ('a -> string) -> 'a t
+module type OrdMapArgs = sig
+  type a
+  (** The type of the elements stored in the map *)
 
-(** [add map obj] Adds element [obj] to [map].
+  val get_name : a -> string
+  (** Gets the name of an element, used for listing and ordering the element *)
+end
 
-    Precondition: [map] does not already contain an element whose name
-    matches [obj]. *)
-val add : 'a t -> 'a -> unit
+module type OrdMap = sig
+  type a
+  (** The type of elements stored in the map *)
 
-(** [get map name] Gets the element named [name] from the map.
+  val add : a -> unit
+  (** [add obj] Adds element [obj] to [map].
 
-    Precondition: [map] contains an element with name [name] *)
-val get : 'a t -> string -> 'a
+      Precondition: map does not already contain an element whose name
+      matches [obj]. *)
 
-(** [get_first_elem map] Gets the first element that was added to [map].
 
-    Precondition: [map] is non-empty *)
-val get_first_elem : 'a t -> 'a
+  val get : string -> a
+  (** [get name] Gets the element named [name] from the map.
 
-(** [get_next_elem elem] Gets the element added after [elem], or the first added
-    element if [elem] is the last added element.
+      Precondition: map contains an element with name [name] *)
 
-    Precondition: [map] is non-empty *)
-val get_next_elem : 'a t -> 'a -> 'a
+  val get_first_elem : unit -> a
+  (** [get_first_elem ()] Gets the first element that was added to the map.
 
-(** [get_next_elem map elem] Gets the element added before [elem],
-    or the last element if [elem] is the first. *)
-val get_prev_elem : 'a t -> 'a -> 'a
+      Precondition: [map] is non-empty *)
 
-(** [search map s] is a list of all elements of [map] whose names contains [s],
-    or empty if s has fewer than three characters. *)
-val search : 'a t -> string -> 'a list
+  val get_next_elem : a -> a
+  (** [get_next_elem elem] Gets the element added after [elem], or the first added
+      element if [elem] is the last added element.
+
+      Precondition: [map] is non-empty *)
+
+  val get_prev_elem : a -> a
+  (** [get_next_elem elem] Gets the element added before [elem],
+      or the last element if [elem] is the first. *)
+
+  val search : string -> a list
+  (** [search s] is a list of all elements of the map whose names contains [s],
+      or empty if s has fewer than three characters. *)
+end
+
+module Make : functor (S : OrdMapArgs) -> (OrdMap with type a = S.a)

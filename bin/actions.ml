@@ -6,7 +6,6 @@ type action =
   | Idle
   (** An unintentional action forfeiting the agent's turn because it is too slow or idling *)
 
-
 type action_result =
   | Success
   | Failure

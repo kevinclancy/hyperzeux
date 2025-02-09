@@ -5,5 +5,5 @@ type board_interface = {
   (** Retrieve the waypoint with the given name *)
 
   get_region : string -> Region.region
-  (** Retrieve the waypoint with the given name *)
+  (** Retrieve the region with the given name *)
 }

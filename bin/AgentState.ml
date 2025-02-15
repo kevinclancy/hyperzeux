@@ -53,7 +53,7 @@ and t = {
   name : string ;
   region_name : string option ;
   handlers : channel_handler list ;
-  script_state : script_state ref ;
+  mutable script_state : script_state ;
   receive_bump : board_interface -> Puppet.t -> PuppetExternal.t -> t option ;
   key_left_pressed : board_interface -> Puppet.t -> t option ;
   key_right_pressed : board_interface -> Puppet.t -> t option ;
@@ -125,7 +125,7 @@ let create (state_bp : 's blueprint)
           []
       end;
       script_state =
-        ref begin match state_functions.script with
+        begin match state_functions.script with
         | Some f ->
           BeginScript(fun board puppet -> f board puppet priv_data)
         | None ->
@@ -212,7 +212,7 @@ let region_name (state : t) : string option =
 let resume (state : t) (board : board_interface) (puppet : Puppet.t) (prev_result : Actions.action_result) : Actions.action =
   let open Effect.Deep in
   let open Actions in
-  match !(state.script_state) with
+  match state.script_state with
   | Idling ->
     Actions.Idle
   | RunningAgent k ->
@@ -221,14 +221,14 @@ let resume (state : t) (board : board_interface) (puppet : Puppet.t) (prev_resul
     match_with
       (script board)
       puppet
-      { retc = (fun _ -> state.assert_invariants board puppet; state.script_state := Idling; Actions.Wait) ;
+      { retc = (fun _ -> state.assert_invariants board puppet; state.script_state <- Idling; Actions.Wait) ;
         exnc = raise ;
         effc = fun (type a) (eff : a Effect.t) ->
           match eff with
           | Act action ->
             Some (function (k : (a, _) continuation) ->
               state.assert_invariants board puppet;
-              state.script_state := RunningAgent k;
+              state.script_state <- RunningAgent k;
               action
             )
           | _ ->

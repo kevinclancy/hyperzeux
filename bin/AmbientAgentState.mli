@@ -40,6 +40,10 @@ type 's state_functions = {
 
   key_down_released : (board_interface -> 's -> t option) option ;
   (** [key_down_released self private_data] callback called when the down-arrow key is pressed *)
+
+  key_space_pressed : (board_interface -> 's -> t option) option ;
+
+  key_space_released : (board_interface -> 's -> t option) option
 }
 
 val empty_state_functions : 's state_functions
@@ -68,9 +72,6 @@ val create : 's blueprint -> 's -> t
 
 val name : t -> string
 (** [state_name s] is the name of the state [s] *)
-
-val region_name : t -> string option
-(** [egion_name s] is the region we expect an agent to stay inside while in state [s] *)
 
 val resume : t -> board_interface -> unit
 (** [resume state prev_result] Resume the [state]'s coroutine, where [prev_result] tells whether

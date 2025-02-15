@@ -2,25 +2,25 @@ open Common
 open Region
 
 type menu_state = {
-  region_list_scroll_index : int ref ;
+  mutable region_list_scroll_index : int ;
   (** The region list's scrollbar position *)
 
-  focused_region_index : int ref ;
+  mutable focused_region_index : int ;
   (** index of region name that mouse is hovering over (or -1 if not over an item) *)
 
-  selected_region_index : int ref ;
+  mutable selected_region_index : int ;
   (** The index of the currently selected region *)
 
-  square_list_scroll_index : int ref;
+  mutable square_list_scroll_index : int ;
   (** The square list's scrollbar position *)
 
-  focused_square_index : int ref ;
+  mutable focused_square_index : int ;
   (** index of square name that mouse is hovering over (or -1 if not over an item) *)
 
-  selected_square_index : int ref ;
+  mutable selected_square_index : int ;
   (** The index of the currently selected square *)
 
-  region_description : string ref
+  mutable region_description : string
   (** A description of the currently selected region *)
 }
 
@@ -42,14 +42,14 @@ type t = region_editor_state ref
 
 let initial_menu_state =
   MenuActive {
-    region_list_scroll_index = ref 0 ;
-    focused_region_index = ref (-1) ;
-    selected_region_index = ref (-1) ;
+    region_list_scroll_index = 0 ;
+    focused_region_index = -1 ;
+    selected_region_index = -1 ;
 
-    square_list_scroll_index = ref 0 ;
-    focused_square_index = ref (-1) ;
-    selected_square_index = ref 0;
-    region_description = ref "";
+    square_list_scroll_index = 0 ;
+    focused_square_index = -1 ;
+    selected_square_index = 0 ;
+    region_description = "" ;
   }
 
 let create () : t = ref initial_menu_state
@@ -102,23 +102,23 @@ let draw_menu (region_editor_state : t) (menu_state : menu_state) (bp : Board.Bl
       Raygui.list_view_ex
         boundary
         region_names  (* TODO: load these from the blueprint region keys *)
-        !(menu_state.focused_region_index)
-        !(menu_state.region_list_scroll_index)
-        !(menu_state.selected_region_index)
+        menu_state.focused_region_index
+        menu_state.region_list_scroll_index
+        menu_state.selected_region_index
     in
     let selected_region =
       match selected_index with
       | -1 ->
-        menu_state.region_description := "";
+        menu_state.region_description <- "";
         None
       | n ->
         let selected_region_name = List.nth region_names selected_index in
         let region = Board.Blueprint.region bp selected_region_name in
         Some(selected_region_name, region)
     in
-    menu_state.region_list_scroll_index := scroll_index;
-    menu_state.focused_region_index := focused_index;
-    menu_state.selected_region_index := selected_index;
+    menu_state.region_list_scroll_index <- scroll_index;
+    menu_state.focused_region_index <- focused_index;
+    menu_state.selected_region_index <- selected_index;
     boundary_top, boundary_top +. boundary_height, boundary_width, boundary_height, selected_region
   in
 
@@ -144,8 +144,8 @@ let draw_menu (region_editor_state : t) (menu_state : menu_state) (bp : Board.Bl
     begin
       match GuiTools.get_new_name "Enter new region name" (fun name -> (List.mem name region_names)) with
       | Some(new_region_name) ->
-        Board.Blueprint.add_region bp new_region_name { description = ref "" ; components = ref StringMap.empty };
-        menu_state.selected_region_index :=
+        Board.Blueprint.add_region bp new_region_name { description = "" ; components = StringMap.empty };
+        menu_state.selected_region_index <-
           Option.get (List.find_index ((=) new_region_name) (Board.Blueprint.region_names bp))
       | None ->
         ()
@@ -159,24 +159,24 @@ let draw_menu (region_editor_state : t) (menu_state : menu_state) (bp : Board.Bl
     let selected_index, focused_index, scroll_index =
       match selected_region with
       | Some(_, region) ->
-        let component_names = List.map fst (StringMap.to_list !(region.components)) in
+        let component_names = List.map fst (StringMap.to_list region.components) in
         Raygui.list_view_ex
           boundary
           component_names
-          !(menu_state.focused_square_index)
-          !(menu_state.square_list_scroll_index)
-          !(menu_state.selected_square_index)
+          menu_state.focused_square_index
+          menu_state.square_list_scroll_index
+          menu_state.selected_square_index
       | None ->
         Raygui.list_view_ex
           boundary
           []
-          !(menu_state.focused_square_index)
-          !(menu_state.square_list_scroll_index)
-          !(menu_state.selected_square_index)
+          menu_state.focused_square_index
+          menu_state.square_list_scroll_index
+          menu_state.selected_square_index
     in
-    menu_state.square_list_scroll_index := scroll_index;
-    menu_state.focused_square_index := focused_index;
-    menu_state.selected_square_index := selected_index;
+    menu_state.square_list_scroll_index <- scroll_index;
+    menu_state.focused_square_index <- focused_index;
+    menu_state.selected_square_index <- selected_index;
   in
 
   let new_component_pressed, del_component_pressed =
@@ -198,7 +198,7 @@ let draw_menu (region_editor_state : t) (menu_state : menu_state) (bp : Board.Bl
 
   begin match new_component_pressed, selected_region with
   | true, Some(region_name, region) ->
-    let component_num = Seq.find (fun n -> not @@ StringMap.mem (Int.to_string n) !(region.components)) (Seq.ints 0) in
+    let component_num = Seq.find (fun n -> not @@ StringMap.mem (Int.to_string n) region.components) (Seq.ints 0) in
     let component_name = Int.to_string (Option.get component_num) in
     region_editor_state := ComponentTopLeft(region, region_name, component_name)
   | _, _ ->
@@ -221,8 +221,8 @@ let draw_menu (region_editor_state : t) (menu_state : menu_state) (bp : Board.Bl
     let boundary = Rectangle.create left top width height in
     begin match selected_region with
     | Some(_, region) ->
-      let text, _ = Raygui.text_box_multi boundary !(region.description) true in
-      region.description := text
+      let text, _ = Raygui.text_box_multi boundary region.description true in
+      region.description <- text
     | None ->
       let _, _ = Raygui.text_box_multi boundary "" false in
       ()
@@ -313,5 +313,5 @@ let click_left (region_editor : t) (bp : Board.Blueprint.t) (cursor_cell_pos : p
     if top_left_x <= cursor_x && top_left_y <= cursor_y then
       let open Board in
       let new_component = { left = top_left_x ; top = top_left_y ; right = cursor_x ; bottom = cursor_y } in
-      region.components := StringMap.add component_name new_component !(region.components);
+      region.components <- StringMap.add component_name new_component region.components;
       region_editor := initial_menu_state

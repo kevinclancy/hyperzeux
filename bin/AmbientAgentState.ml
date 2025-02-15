@@ -3,8 +3,6 @@ open BoardInterface
 (* There is a lot of code duplication between AmbientAgent and Agent.
     Maybe we can use a functor. *)
 
-type channel_handler = (t option, board_interface) Channel.t_in_handler
-
 type _ Effect.t += AmbientAction : unit -> unit Effect.t
 
 type 's state_functions = {
@@ -58,7 +56,7 @@ and script_state =
 and t = {
   name : string ;
   handlers : channel_handler list ;
-  script_state : script_state ref ;
+  mutable script_state : script_state ;
   key_left_pressed : board_interface -> t option ;
   key_right_pressed : board_interface -> t option ;
   key_up_pressed : board_interface -> t option ;
@@ -71,6 +69,8 @@ and t = {
   key_space_released : board_interface -> t option ;
   assert_invariants : board_interface -> unit
 }
+
+and channel_handler = (t option, board_interface) Channel.t_in_handler
 
 type blueprint_props = {
   (** Properties shared by all ambient agent state blueprints, regardless of private data type *)
@@ -117,7 +117,7 @@ let create (bp : 's blueprint) (priv_data : 's) : t =
           []
       end;
       script_state =
-        ref begin match state_functions.script with
+        begin match state_functions.script with
         | Some f ->
           BeginScript(fun board -> f board priv_data)
         | None ->
@@ -202,7 +202,6 @@ let create (bp : 's blueprint) (priv_data : 's) : t =
         end;
     }
 
-
 (** [create blueprint initial_state] Creates a new agent state from [blueprint]
     using [initial_state] as initial state *)
 
@@ -211,23 +210,23 @@ let name (state : t) : string =
 
 let resume (state : t) (board : board_interface) : unit =
   let open Effect.Deep in
-  match !(state.script_state) with
+  match state.script_state with
   | Idling ->
     ()
   | RunningAgent k ->
     continue k ()
   | BeginScript script ->
     match_with
-      (script board)
+      (fun () -> script board)
       ()
-      { retc = (fun _ -> state.assert_invariants board; state.script_state := Idling; ()) ;
+      { retc = (fun _ -> state.assert_invariants board; state.script_state <- Idling; ()) ;
         exnc = raise ;
         effc = fun (type a) (eff : a Effect.t) ->
           match eff with
           | AmbientAction () ->
             Some (function (k : (a, _) continuation) ->
               state.assert_invariants board;
-              state.script_state := RunningAgent k;
+              state.script_state <- RunningAgent k;
               ()
             )
           | _ ->

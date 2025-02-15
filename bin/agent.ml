@@ -28,13 +28,13 @@ type t = {
   board : board_interface ;
   (** Interface to the board this agent is inside of *)
 
-  agent_state : AgentState.t ref ;
+  mutable agent_state : AgentState.t ;
   (** The current scripts used to control the puppet *)
 
-  speed : float ref ;
+  mutable speed : float ;
   (** speed in actions per second, should be at most 1.0 *)
 
-  action_meter : float ref ;
+  mutable action_meter : float ;
   (** percentage of wait completed before next action is allowed *)
 }
 
@@ -48,10 +48,10 @@ let create (board : board_interface)
   let puppet = Puppet.create name position color (TextureMap.get template.preview_texture_name) in
   {
     board ;
-    agent_state = ref template.initial_state ;
+    agent_state = template.initial_state ;
     puppet ;
-    action_meter = ref 0.;
-    speed  = ref template.speed;
+    action_meter = 0.;
+    speed  = template.speed;
   }
 
 (** [create board_intf name pos color] Creates an agent named [name] at position [pos] with color [color] *)
@@ -63,45 +63,45 @@ let update_input (agent : t) : unit =
   let open Raylib in
   let opt_new_state =
     if is_key_pressed Key.Left then
-      AgentState.key_left_pressed !(agent.agent_state) agent.board agent.puppet
+      AgentState.key_left_pressed agent.agent_state agent.board agent.puppet
     else if is_key_pressed Key.Up then
-      AgentState.key_up_pressed !(agent.agent_state) agent.board agent.puppet
+      AgentState.key_up_pressed agent.agent_state agent.board agent.puppet
     else if is_key_pressed Key.Right then
-      AgentState.key_right_pressed !(agent.agent_state) agent.board agent.puppet
+      AgentState.key_right_pressed agent.agent_state agent.board agent.puppet
     else if is_key_pressed Key.Down then
-      AgentState.key_down_pressed !(agent.agent_state) agent.board agent.puppet
+      AgentState.key_down_pressed agent.agent_state agent.board agent.puppet
     else if is_key_released Key.Left then
-      AgentState.key_left_released !(agent.agent_state) agent.board agent.puppet
+      AgentState.key_left_released agent.agent_state agent.board agent.puppet
     else if is_key_released Key.Up then
-      AgentState.key_up_released !(agent.agent_state) agent.board agent.puppet
+      AgentState.key_up_released agent.agent_state agent.board agent.puppet
     else if is_key_released Key.Right then
-      AgentState.key_right_released !(agent.agent_state) agent.board agent.puppet
+      AgentState.key_right_released agent.agent_state agent.board agent.puppet
     else if is_key_released Key.Down then
-      AgentState.key_down_released !(agent.agent_state) agent.board agent.puppet
+      AgentState.key_down_released agent.agent_state agent.board agent.puppet
     else
       None
   in
-  Option.iter (fun state -> agent.agent_state := state) opt_new_state
+  Option.iter (fun state -> agent.agent_state <- state) opt_new_state
 
 let receive_bump (agent : t) (other : PuppetExternal.t) : unit =
-  let opt_new_state = AgentState.receive_bump !(agent.agent_state) agent.board agent.puppet other in
-  Option.iter (fun state -> agent.agent_state := state) opt_new_state
+  let opt_new_state = AgentState.receive_bump agent.agent_state agent.board agent.puppet other in
+  Option.iter (fun state -> agent.agent_state <- state) opt_new_state
 
 let handle_messages (agent : t) : unit =
-  match AgentState.handle_messages !(agent.agent_state) agent.board agent.puppet with
+  match AgentState.handle_messages agent.agent_state agent.board agent.puppet with
   | Some(new_state) ->
-    agent.agent_state := new_state
+    agent.agent_state <- new_state
   | None ->
     ()
 
 let rec resume (agent : t) (prev_result : Actions.action_result) : Actions.action =
   let open Effect.Deep in
   let open Actions in
-  agent.action_meter := !(agent.action_meter) +. (Raylib.get_frame_time ()) *. !(agent.speed) *. Config.speed;
-  if !(agent.action_meter) > 1.0 then
+  agent.action_meter <- agent.action_meter +. (Raylib.get_frame_time ()) *. agent.speed *. Config.speed;
+  if agent.action_meter > 1.0 then
     begin
-      agent.action_meter := !(agent.action_meter) -. (Float.round !(agent.action_meter));
-      AgentState.resume !(agent.agent_state) agent.board agent.puppet prev_result
+      agent.action_meter <- agent.action_meter -. (Float.round agent.action_meter);
+      AgentState.resume agent.agent_state agent.board agent.puppet prev_result
     end
   else
     Actions.Idle

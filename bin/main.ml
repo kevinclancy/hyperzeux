@@ -4,6 +4,8 @@ open Raylib
 open Agent
 open Edit_modes
 
+open AmbientAgent
+
 (* TODO: look into Raylib's built-in Camera module *)
 type camera = {
   position : Raylib.Vector2.t ;
@@ -49,9 +51,9 @@ type editor_mode = {
 
 type edit_state = {
   blueprint : Board.Blueprint.t ;
-  camera_pos : Vector2.t ref ;
+  mutable camera_pos : Vector2.t ;
   scale : float ref ;
-  edit_mode : editor_mode ref ;
+  mutable edit_mode : editor_mode ;
 }
 
 type game_state =
@@ -152,9 +154,9 @@ let () =
   let game_state =
     ref @@ Editing {
       blueprint = Board.Blueprint.create_empty board_cells_width board_cells_height "empty" ;
-      camera_pos = ref @@ Vector2.create 0.0 0.0 ;
+      camera_pos = Vector2.create 0.0 0.0 ;
       scale = ref 1.0 ;
-      edit_mode = ref object_selector_state
+      edit_mode = object_selector_state
     }
   in
   let save_board (bp : Board.Blueprint.t) : unit =
@@ -172,9 +174,9 @@ let () =
       let bp = Board.Blueprint.deserialize filename in
       game_state := Editing {
         blueprint = bp ;
-        camera_pos = ref @@ Vector2.create 0.0 0.0 ;
+        camera_pos = Vector2.create 0.0 0.0 ;
         scale = ref 1.0 ;
-        edit_mode = ref object_selector_state
+        edit_mode = object_selector_state
       }
     | None ->
       ()
@@ -187,11 +189,11 @@ let () =
       begin_drawing ();
         Board.draw b (Vector2.zero ()) 4.0;
       end_drawing ();
-    | Editing { blueprint ; camera_pos ; scale ; edit_mode } ->
+    | Editing ({ blueprint ; camera_pos ; scale ; edit_mode } as edit_state) ->
       let dt = Raylib.get_frame_time () in
       let mouse_delta = Raylib.get_mouse_delta () in
       if is_mouse_button_down MouseButton.Right then
-        camera_pos := Vector2.subtract !camera_pos mouse_delta
+        edit_state.camera_pos <- Vector2.subtract camera_pos mouse_delta
       else
         ();
 
@@ -199,23 +201,23 @@ let () =
       scale := !scale +. (Config.editor_zoom_speed *. wheel_delta *. dt);
 
       if Raylib.is_key_pressed Key.Comma then
-        (!edit_mode).comma_pressed ()
+        edit_mode.comma_pressed ()
       else if is_key_pressed Key.Period then
-        (!edit_mode).period_pressed ()
+        edit_mode.period_pressed ()
       else if is_key_down Key.Left_control && is_key_pressed Key.P then
         game_state := Playing (Board.create_from_blueprint blueprint)
       else if is_key_pressed Key.One then
-        edit_mode := object_selector_state
+        edit_state.edit_mode <- object_selector_state
       else if is_key_pressed Key.Two then
-        edit_mode := agent_selector_state
+        edit_state.edit_mode <- agent_selector_state
       else if is_key_pressed Key.Three then
-        edit_mode := region_editor_mode
+        edit_state.edit_mode <- region_editor_mode
       else if (is_key_pressed Key.O) && (is_key_down Key.Left_control) then
         begin
           let opt_obj = get_static_obj () in
           match opt_obj with
           | Some obj ->
-            edit_mode := object_selector_state;
+            edit_state.edit_mode <- object_selector_state;
             ObjectSelector.set_obj object_selector obj
           | None ->
             ()
@@ -225,7 +227,7 @@ let () =
           let opt_agent_class = get_agent_class () in
           match opt_agent_class with
           | Some agent_class ->
-            edit_mode := agent_selector_state;
+            edit_state.edit_mode <- agent_selector_state;
             AgentClassSelector.set_obj agent_selector agent_class;
           | None ->
             ()
@@ -236,7 +238,7 @@ let () =
         load_board ()
       else if (is_key_pressed Key.W) then
         begin
-        let {x;y} = get_mouse_boardpos !camera_pos !scale in
+        let {x;y} = get_mouse_boardpos camera_pos !scale in
         if x >= 0 && y >= 0 && x < Config.board_cells_width && y < Config.board_cells_height then
           let opt_name = GuiTools.get_new_name "Enter new waypoint name" (Board.Blueprint.contains_waypoint_name blueprint) in
           match opt_name with
@@ -247,25 +249,25 @@ let () =
         end;
 
       let mouse_pos = Raylib.get_mouse_position () in
-      let mouse_cell_x = Int.of_float @@ ((Vector2.x mouse_pos) +. (Vector2.x !camera_pos)) /. (!scale *. (Float.of_int @@ Config.char_width)) in
-      let mouse_cell_y = Int.of_float @@ ((Vector2.y mouse_pos) +. (Vector2.y !camera_pos)) /. (!scale *. (Float.of_int @@ Config.char_height)) in
+      let mouse_cell_x = Int.of_float @@ ((Vector2.x mouse_pos) +. (Vector2.x camera_pos)) /. (!scale *. (Float.of_int @@ Config.char_width)) in
+      let mouse_cell_y = Int.of_float @@ ((Vector2.y mouse_pos) +. (Vector2.y camera_pos)) /. (!scale *. (Float.of_int @@ Config.char_height)) in
 
       let contained_in_board (x : int) (y : int) =
         x >= 0 && y >= 0 && x < Config.board_cells_width && y < Config.board_cells_height
       in
 
       if Raylib.is_mouse_button_pressed MouseButton.Left && contained_in_board mouse_cell_x mouse_cell_y then
-          (!edit_mode).mouse_click_left blueprint {x = mouse_cell_x ; y = mouse_cell_y} !camera_pos !scale;
+          edit_mode.mouse_click_left blueprint {x = mouse_cell_x ; y = mouse_cell_y} camera_pos !scale;
 
       if Raylib.is_mouse_button_down MouseButton.Left && contained_in_board mouse_cell_x mouse_cell_y then
-        (!edit_mode).mouse_down_left blueprint {x = mouse_cell_x ; y = mouse_cell_y};
+        edit_mode.mouse_down_left blueprint {x = mouse_cell_x ; y = mouse_cell_y};
 
       Board.Blueprint.draw_prep blueprint;
         (* (region_editor : t) (bp : Board.Blueprint.t) (cursor_cell_pos : position) (camera_pos : vec2) (scale : float) *)
       begin_drawing ();
-        Board.Blueprint.draw blueprint !camera_pos !scale;
+        Board.Blueprint.draw blueprint camera_pos !scale;
         (* let curr_obj_texture = TextureMap.get curr_object.texture_name in *)
-        (!edit_mode).draw blueprint !camera_pos !scale mouse_pos;
+        edit_mode.draw blueprint camera_pos !scale mouse_pos;
         (* draw_texture_ex
           curr_obj_texture
           (Vector2.create Config.(Float.of_int @@ screen_width - char_width - 50) 50.0)

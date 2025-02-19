@@ -11,9 +11,6 @@ type ambient_agent_class = {
   initial_state : AmbientAgentState.t ;
   (** The state that the agent starts out in *)
 
-  preview_texture_name : string ;
-  (** The name of the texture used to represent the agent class in the map editor *)
-
   speed : float ;
 
   name : string ;
@@ -25,6 +22,9 @@ val create : board_interface ->
              string ->
              t
 (** [create board agent_blueprint name] Creates an agent *)
+
+val draw : t -> unit
+(** [draw agent] draws [agent] to screen *)
 
 val name : t -> string
 (** The name of the ambient agent *)

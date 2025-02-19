@@ -13,6 +13,9 @@ type 's state_functions = {
 
   create_handlers : ('s -> ((t option, board_interface) Channel.t_in_handler) list) option ;
 
+  draw : ('s -> unit) option ;
+  (** Draw GUI elements associated with the ambient agent *)
+
   assert_invariants : (board_interface -> 's -> unit) option ;
   (** Function to call to assert state invariants. None means there are no assertable invariants. *)
 
@@ -57,6 +60,7 @@ and t = {
   name : string ;
   handlers : channel_handler list ;
   mutable script_state : script_state ;
+  draw : unit -> unit ;
   key_left_pressed : board_interface -> t option ;
   key_right_pressed : board_interface -> t option ;
   key_up_pressed : board_interface -> t option ;
@@ -91,6 +95,7 @@ type 's blueprint = {
 
 let empty_state_functions = {
   script = None ;
+  draw = None ;
   create_handlers = None ;
   assert_invariants = None ;
   key_left_pressed = None ;
@@ -122,6 +127,13 @@ let create (bp : 's blueprint) (priv_data : 's) : t =
           BeginScript(fun board -> f board priv_data)
         | None ->
           Idling
+        end;
+      draw =
+        begin match state_functions.draw with
+        | Some f ->
+          (fun () -> f priv_data)
+        | None ->
+          (fun () -> ())
         end;
       key_left_pressed =
         begin match state_functions.key_left_pressed with
@@ -180,14 +192,14 @@ let create (bp : 's blueprint) (priv_data : 's) : t =
           (fun _ -> None)
         end;
       key_space_released =
-        begin match state_functions.key_down_released with
+        begin match state_functions.key_space_released with
         | Some f ->
           (fun board -> f board priv_data)
         | None ->
           (fun _ -> None)
         end;
       key_space_pressed =
-        begin match state_functions.key_down_released with
+        begin match state_functions.key_space_pressed with
         | Some f ->
           (fun board -> f board priv_data)
         | None ->
@@ -202,8 +214,8 @@ let create (bp : 's blueprint) (priv_data : 's) : t =
         end;
     }
 
-(** [create blueprint initial_state] Creates a new agent state from [blueprint]
-    using [initial_state] as initial state *)
+let draw (agent : t) =
+  agent.draw ()
 
 let name (state : t) : string =
   state.name

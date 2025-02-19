@@ -16,7 +16,13 @@ module Blueprint : sig
         [key] and color [color] *)
 
     val add_agent : t -> string -> Raylib.Color.t -> string -> string -> position -> unit
-    (** [set_agent blueprint agent_name color agent_class_name texture_name pos] *)
+    (** [add_agent blueprint agent_name color agent_class_name texture_name pos] *)
+
+    val add_ambient_agent : t -> string -> string -> unit
+    (** [add_ambient_agent blueprint ambient_name ambient_class_name] *)
+
+    val remove_ambient_agent : t -> string -> unit
+    (** [remove_ambient_agent] *)
 
     val add_waypoint : t -> string -> position -> unit
     (** [add_waypoint blueprint waypoint_name waypoint_position]
@@ -26,11 +32,18 @@ module Blueprint : sig
     (** [contains_waypoint_name blueprint name] *)
 
     val contains_agent_name : t -> string -> bool
-    (** [contains_agent_name name] returns true iff this board blueprint
+    (** [contains_agent_name blueprint name] returns true iff this board blueprint
         contains a blueprint for an agent named [name] *)
+
+    val contains_ambient_name : t -> string -> bool
+    (** [contains_ambient_name blueprint name] returns true iff the board blueprint
+        contains a blueprint for an ambient named [name] *)
 
     val region_names : t -> string list
     (** [region_names bp] Return a list of all region names in the blueprint [bp] *)
+
+    val ambient_names : t -> string list
+    (** [ambient_names bp] Returns a list of all ambient agent names in the blueprint [bp] *)
 
     val region : t -> string -> region
     (** [region bp region_name] Returns the region in blueprint [bp] whose name is [region_name] *)

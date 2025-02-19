@@ -41,6 +41,8 @@ val puppet : t -> Puppet.t
 
 val set_position : t -> position -> unit
 
+val set_state : t -> AgentState.t -> unit
+
 val texture : t -> Raylib.Texture.t
 
 val update_input : t -> unit

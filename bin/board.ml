@@ -8,6 +8,13 @@ let region_colors =
     Raylib.[| Color.blue ; Color.brown ; Color.green ; Color.magenta ; Color.gold ; Color.purple ; Color.orange ; Color.pink |]
 
 module Blueprint = struct
+  type ambient_agent_blueprint = {
+    agent_class_name : string ;
+    (** Name of the ambient agent class *)
+    agent_name : string
+    (** A unique name for the agent *)
+  }
+
   type agent_blueprint = {
     agent_class_name : string ;
     (** A key in the AgentClassMap identifying the AgentClass to use *)
@@ -34,7 +41,6 @@ module Blueprint = struct
     (** the position of the waypoint *)
   }
 
-  (** Maps each component name to the component *)
   type t = {
     width : int ;
     (** Grid cells of board in width *)
@@ -47,7 +53,10 @@ module Blueprint = struct
         for the static object at position (x,y) *)
 
     mutable agents : agent_blueprint StringMap.t ;
-    (** For each agent in the board's starting state, a blueprint. *)
+    (** For each agent in the board's starting state, maps agent name to a blueprint. *)
+
+    mutable ambient_agents : ambient_agent_blueprint StringMap.t ;
+    (** For each ambient agent in the board's starting state, maps ambient agent name to a blueprint *)
 
     mutable waypoints : position StringMap.t ;
     (** Maps waypoint names to waypoint positions *)
@@ -93,6 +102,7 @@ module Blueprint = struct
           width
           (fun _ -> Array.init height (fun _ -> ref { name = empty_object_key ; color = Color.white }));
       agents = StringMap.empty ;
+      ambient_agents = StringMap.empty ;
       regions = StringMap.empty ;
       static_bg_texture ;
       render_texture =
@@ -129,14 +139,28 @@ module Blueprint = struct
     remove_agent_at bp pos;
     bp.agents <- StringMap.add agent_name { agent_class_name ; agent_name; color; texture_name; pos } bp.agents
 
+  let add_ambient_agent (bp : t) (agent_name : string) (agent_class_name : string) =
+    assert (not @@ StringMap.mem agent_name bp.ambient_agents);
+    bp.ambient_agents <- StringMap.add agent_name { agent_class_name ; agent_name } bp.ambient_agents
+
+  let remove_ambient_agent (bp : t) (agent_name : string) : unit =
+    assert (StringMap.mem agent_name bp.ambient_agents);
+    bp.ambient_agents <- StringMap.remove agent_name bp.ambient_agents
+
   let contains_waypoint_name (bp : t) (waypoint_name : string) : bool =
     StringMap.mem waypoint_name bp.waypoints
 
   let contains_agent_name (bp : t) (agent_name : string) : bool =
     StringMap.mem agent_name bp.agents
 
+  let contains_ambient_name (bp : t) (agent_name : string) : bool =
+    StringMap.mem agent_name bp.ambient_agents
+
   let region_names (bp : t) : string list =
     List.map fst (StringMap.to_list bp.regions)
+
+  let ambient_names (bp : t) : string list =
+    List.map fst (StringMap.to_list bp.ambient_agents)
 
   let region (bp : t) (name : string) : region =
     StringMap.find name bp.regions
@@ -225,6 +249,10 @@ module Blueprint = struct
     output_binary_int chan (Raylib.Color.b agent.color);
     output_binary_int chan (Raylib.Color.a agent.color)
 
+  let output_ambient_agent (chan : out_channel) (agent_name : string) (agent : ambient_agent_blueprint) : unit =
+    output_binary_string chan agent.agent_class_name;
+    output_binary_string chan agent.agent_name
+
   let output_region_component (chan : out_channel) (component_name : string) (component : region_component) : unit =
     output_binary_string chan component_name;
     output_binary_int chan component.top;
@@ -278,6 +306,11 @@ module Blueprint = struct
       texture_name
     }
 
+  let input_ambient_agent (chan : in_channel) : ambient_agent_blueprint =
+    let agent_class_name = input_binary_string chan in
+    let agent_name = input_binary_string chan in
+    { agent_class_name ; agent_name }
+
   let serialize (bp : t) (filename : string) : unit =
     let chan = open_out_bin filename in
     output_binary_int chan bp.width;
@@ -289,6 +322,8 @@ module Blueprint = struct
     done;
     output_binary_int chan (StringMap.cardinal bp.agents);
     StringMap.iter (output_agent chan) bp.agents;
+    output_binary_int chan (StringMap.cardinal bp.ambient_agents);
+    StringMap.iter (output_ambient_agent chan) bp.ambient_agents;
     output_binary_int chan (StringMap.cardinal bp.regions);
     StringMap.iter (output_region chan) bp.regions;
     close_out chan
@@ -309,6 +344,11 @@ module Blueprint = struct
     for i = 0 to num_agents - 1 do
       let agent = input_agent chan in
       add_agent result_bp agent.agent_name agent.color agent.agent_class_name agent.texture_name agent.pos;
+    done;
+    let num_ambient_agents = input_binary_int chan in
+    for i = 0 to num_ambient_agents - 1 do
+      let agent = input_ambient_agent chan in
+      add_ambient_agent result_bp agent.agent_name agent.agent_class_name;
     done;
     let num_regions = input_binary_int chan in
     for i = 0 to num_regions - 1 do
@@ -343,6 +383,9 @@ type t = {
   (** Maps each agent name to agent, paired with result of last action the agent yielded to board
       (or Success if the agent has not yet performed an action). *)
 
+  mutable ambient_agents : AmbientAgent.t StringMap.t ;
+  (** Maps each ambient agent name to an ambient agent *)
+
   mutable waypoints : position StringMap.t ;
   (** Maps each waypoint name to position *)
 
@@ -372,8 +415,9 @@ let create_empty (width : int)
           ref { static_object = empty_object ; static_object_color = Raylib.Color.white ; agent = None }
         )
       );
-    agents = StringMap.empty;
-    waypoints = StringMap.empty;
+    agents = StringMap.empty ;
+    ambient_agents = StringMap.empty ;
+    waypoints = StringMap.empty ;
     static_texture ;
     render_texture =
       load_render_texture
@@ -401,6 +445,10 @@ let add_agent (board : t) (agent : Agent.t) : unit =
   assert (not @@ StringMap.mem (Agent.name agent) board.agents);
   board.agents <- StringMap.add (Agent.name agent) (agent, ref Actions.Success) board.agents
 
+let add_ambient_agent (board : t) (agent : AmbientAgent.t) : unit =
+  assert (not @@ StringMap.mem (AmbientAgent.name agent) board.ambient_agents);
+  board.ambient_agents <- StringMap.add (AmbientAgent.name agent) agent board.ambient_agents
+
 let prep_draw (board : t) : unit =
   let open Raylib in
   begin_texture_mode board.render_texture;
@@ -420,10 +468,16 @@ let draw (board : t) (pos : Raylib.Vector2.t) (scale : float) : unit =
   let height = (Float.of_int Config.board_pixels_height) in
   let src = Rectangle.create 0.0 0.0 width (-. height) in
   let dest = Rectangle.create 0.0 0.0 (width *. scale) (height *. scale) in
-  draw_texture_pro (RenderTexture.texture board.render_texture) src dest pos 0.0 Color.white
+  draw_texture_pro (RenderTexture.texture board.render_texture) src dest pos 0.0 Color.white;
+  StringMap.iter (fun _ ambient -> AmbientAgent.draw ambient) board.ambient_agents
 
 let update (board : t) : unit =
   let open Raylib in
+  let update_ambient_agent (_ : string) (agent : AmbientAgent.t) : unit =
+    AmbientAgent.handle_messages agent;
+    AmbientAgent.update_input agent;
+    AmbientAgent.resume agent
+  in
   let update_agent (_ : string) ((agent, prev_result) : Agent.t * Actions.action_result ref) : unit =
     Agent.handle_messages agent;
     Agent.update_input agent;
@@ -454,6 +508,7 @@ let update (board : t) : unit =
       (* the result of the previous action hasn't been returned to the agent yet, so keep it *)
       ()
   in
+  StringMap.iter update_ambient_agent board.ambient_agents;
   StringMap.iter update_agent board.agents
 
 let create_from_blueprint (blueprint : Blueprint.t) : t =
@@ -475,6 +530,11 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
         StringMap.find name blueprint.regions
       )
   } in
+  let create_ambient_agent (agent_bp : Blueprint.ambient_agent_blueprint) : AmbientAgent.t =
+    let agent_class = AmbientAgentClassMap.get agent_bp.agent_class_name in
+    AmbientAgent.create board_intf agent_class agent_bp.agent_name
+  in
+  let ambient_agents = StringMap.map (fun x -> create_ambient_agent x) blueprint.ambient_agents in
   let create_agent (agent_bp : Blueprint.agent_blueprint) : Agent.t =
     let agent_class = AgentClassMap.get agent_bp.agent_class_name in
     Agent.create board_intf agent_class agent_bp.agent_name agent_bp.pos agent_bp.color
@@ -514,6 +574,7 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
   {
     grid;
     agents = agents;
+    ambient_agents = ambient_agents ;
     waypoints = blueprint.waypoints;
     static_texture;
     render_texture = load_render_texture board_width board_height

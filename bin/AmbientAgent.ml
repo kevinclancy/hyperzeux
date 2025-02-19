@@ -9,9 +9,6 @@ type ambient_agent_class = {
   initial_state : AmbientAgentState.t ;
   (** The state that the agent starts out in *)
 
-  preview_texture_name : string ;
-  (** The name of the texture used to represent the agent class in the map editor *)
-
   speed : float ;
 
   name : string ;
@@ -55,8 +52,11 @@ let create (board : board_interface)
     speed  = ref agent_class.speed;
   }
 
-let name (state : t) : string =
-  state.name
+let draw (agent : t) : unit =
+  AmbientAgentState.draw agent.agent_state
+
+let name (agent : t) : string =
+  agent.name
 
 let update_input (agent : t) : unit =
   let open Raylib in
@@ -69,6 +69,8 @@ let update_input (agent : t) : unit =
       AmbientAgentState.key_right_pressed agent.agent_state agent.board
     else if is_key_pressed Key.Down then
       AmbientAgentState.key_down_pressed agent.agent_state agent.board
+    else if is_key_pressed Key.Space then
+      AmbientAgentState.key_space_pressed agent.agent_state agent.board
     else if is_key_released Key.Left then
       AmbientAgentState.key_left_released agent.agent_state agent.board
     else if is_key_released Key.Up then
@@ -77,6 +79,8 @@ let update_input (agent : t) : unit =
       AmbientAgentState.key_right_released agent.agent_state agent.board
     else if is_key_released Key.Down then
       AmbientAgentState.key_down_released agent.agent_state agent.board
+    else if is_key_released Key.Space then
+      AmbientAgentState.key_space_released agent.agent_state agent.board
     else
       None
   in

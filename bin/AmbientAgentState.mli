@@ -14,6 +14,9 @@ type 's state_functions = {
 
   create_handlers : ('s -> ((t option, board_interface) Channel.t_in_handler) list) option ;
 
+  draw : ('s -> unit) option ;
+  (** Draw GUI elements associated with the ambient agent *)
+
   assert_invariants : (board_interface -> 's -> unit) option ;
   (** Function to call to assert state invariants. None means there are no assertable invariants. *)
 
@@ -65,10 +68,12 @@ type 's blueprint = {
   (** Properties shared by all agent state blueprints, regardless of private data type *)
 }
 
-
 val create : 's blueprint -> 's -> t
 (** [create blueprint initial_state] Creates a new agent state from [blueprint]
     using [initial_state] as initial state *)
+
+val draw : t -> unit
+(** Displays UI item depicting current state *)
 
 val name : t -> string
 (** [state_name s] is the name of the state [s] *)

@@ -101,7 +101,7 @@ let draw_menu (region_editor_state : t) (menu_state : menu_state) (bp : Board.Bl
     let selected_index, focused_index, scroll_index =
       Raygui.list_view_ex
         boundary
-        region_names  (* TODO: load these from the blueprint region keys *)
+        region_names
         menu_state.focused_region_index
         menu_state.region_list_scroll_index
         menu_state.selected_region_index

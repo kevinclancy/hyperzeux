@@ -16,6 +16,7 @@ type selector_name =
   | AgentSelector
   | StaticObjectSelector
   | RegionEditor
+  | AmbientAgentList
 
 type editor_mode = {
   (** A selector for the current type of object we are placing in the
@@ -54,6 +55,17 @@ type edit_state = {
   mutable camera_pos : Vector2.t ;
   scale : float ref ;
   mutable edit_mode : editor_mode ;
+
+  object_selector : ObjectSelector.t ;
+  object_selector_mode : editor_mode ;
+
+  agent_selector : AgentClassSelector.t ;
+  agent_selector_mode : editor_mode ;
+
+  region_editor : RegionEditor.t ;
+  region_editor_mode : editor_mode ;
+
+  ambient_selector_mode : editor_mode
 }
 
 type game_state =
@@ -65,14 +77,92 @@ let () = Printexc.record_backtrace true
 
 (** Launches the display/update loop for a dialog to select a static object. *)
 let get_static_obj () : static_object option =
-  GuiTools.get_item StaticObjectMap.search (fun o -> o.name) (fun o -> TextureMap.get o.texture_name)
+  GuiTools.get_item
+    StaticObjectMap.search
+    (fun o -> o.name)
+    ~get_texture:(fun o -> TextureMap.get o.texture_name)
 
 let get_agent_class () : agent_class option =
   GuiTools.get_item
     AgentClassMap.search
     (fun (c : agent_class) -> c.name)
-    (fun (c : agent_class) ->
+    ~get_texture:(fun (c : agent_class) ->
       TextureMap.get c.preview_texture_name)
+
+let create_edit_state (bp : Board.Blueprint.t) : edit_state =
+  let object_selector = ObjectSelector.create () in
+  let agent_selector = AgentClassSelector.create () in
+  let region_editor = RegionEditor.create () in
+  let ambient_selector = AmbientClassSelector.create () in
+  (** Begin using the static object selector *)
+  let object_selector_mode : editor_mode =
+    let open ObjectSelector in
+    {
+      name = StaticObjectSelector ;
+      draw = (fun _ _ _ _ -> draw object_selector) ;
+      period_pressed = (fun () -> next_obj object_selector) ;
+      comma_pressed = (fun () -> prev_obj object_selector) ;
+      mouse_click_left = (fun _ _ _ _ -> ()) ;
+      mouse_down_left = instantiate object_selector ;
+      mouse_released_left = (fun _ _ -> ())
+    }
+  in
+
+  let agent_selector_mode : editor_mode =
+    let open AgentClassSelector in
+    {
+      name = AgentSelector ;
+      draw = (fun _ _ _ _ -> draw agent_selector) ;
+      period_pressed = (fun () -> next_obj agent_selector) ;
+      comma_pressed = (fun () -> prev_obj agent_selector) ;
+      mouse_click_left = (fun bp cell_pos _ _ -> instantiate agent_selector bp cell_pos) ;
+      mouse_down_left = (fun _ _ -> ()) ;
+      mouse_released_left = (fun _ _ -> ())
+    }
+  in
+
+  let ambient_selector_mode : editor_mode =
+    let open AmbientClassSelector in
+    {
+      name = AmbientAgentList ;
+      draw = (fun bp _ _ _ -> draw ambient_selector bp) ;
+      period_pressed = (fun () -> ()) ;
+      comma_pressed = (fun () -> ()) ;
+      mouse_click_left = (fun _ _ _ _ -> ()) ;
+      mouse_down_left = (fun _ _ -> ()) ;
+      mouse_released_left = (fun _ _ -> ())
+    }
+  in
+
+  let region_editor_mode : editor_mode =
+    let open RegionEditor in
+    {
+      name = RegionEditor ;
+      draw = (fun bp camera_pos scale mouse_pos -> draw region_editor bp camera_pos scale mouse_pos) ;
+      period_pressed = (fun () -> ()) ;
+      comma_pressed = (fun () -> ()) ;
+      mouse_click_left = (fun bp cell_pos camera_pos scale-> click_left region_editor bp cell_pos camera_pos scale) ;
+      mouse_down_left = (fun _ _ -> ()) ;
+      mouse_released_left = (fun _ _ -> ())
+    }
+  in
+  {
+    blueprint = bp ;
+    camera_pos = Vector2.create 0.0 0.0 ;
+    scale = ref 1.0 ;
+    edit_mode = object_selector_mode ;
+
+    object_selector ;
+    object_selector_mode ;
+
+    agent_selector ;
+    agent_selector_mode ;
+
+    ambient_selector_mode ;
+
+    region_editor ;
+    region_editor_mode
+  }
 
 let () =
   Printexc.record_backtrace true;
@@ -96,9 +186,13 @@ let () =
   TextureMap.load "plant_2.png";
   TextureMap.load "waypoint.png";
 
+  FontMap.load "romulus.png";
+
   AgentClassMap.add Agents.Button.button_class;
   AgentClassMap.add Agents.Patroller.patroller_class;
   AgentClassMap.add Agents.Player.player_class;
+
+  AmbientAgentClassMap.add Ambient_agents.SpeechBox.speech_box_class;
 
   StaticObjectMap.add { name = "empty" ; texture_name = "empty_cell.png" ; traversable = true };
   StaticObjectMap.add { name = "wall" ; texture_name = "solid_wall.png" ; traversable = false };
@@ -106,59 +200,8 @@ let () =
   StaticObjectMap.add { name = "plant_1" ; texture_name = "plant_1.png" ; traversable = true };
   StaticObjectMap.add { name = "plant_2" ; texture_name = "plant_2.png" ; traversable = true };
 
-  let object_selector = ObjectSelector.create () in
-
-  let agent_selector = AgentClassSelector.create () in
-
-  let region_editor = RegionEditor.create () in
-
-  (** Begin using the static object selector *)
-  let object_selector_state : editor_mode =
-    let open ObjectSelector in
-    {
-      name = StaticObjectSelector ;
-      draw = (fun _ _ _ _ -> draw object_selector) ;
-      period_pressed = (fun () -> next_obj object_selector) ;
-      comma_pressed = (fun () -> prev_obj object_selector) ;
-      mouse_click_left = (fun _ _ _ _ -> ()) ;
-      mouse_down_left = instantiate object_selector ;
-      mouse_released_left = (fun _ _ -> ())
-    }
-  in
-
-  let agent_selector_state : editor_mode =
-    let open AgentClassSelector in
-    {
-      name = AgentSelector ;
-      draw = (fun _ _ _ _ -> draw agent_selector) ;
-      period_pressed = (fun () -> next_obj agent_selector) ;
-      comma_pressed = (fun () -> prev_obj agent_selector) ;
-      mouse_click_left = (fun bp cell_pos _ _ -> instantiate agent_selector bp cell_pos) ;
-      mouse_down_left = (fun _ _ -> ()) ;
-      mouse_released_left = (fun _ _ -> ())
-    }
-  in
-
-  let region_editor_mode : editor_mode =
-    let open RegionEditor in
-    {
-      name = RegionEditor ;
-      draw = (fun bp camera_pos scale mouse_pos -> draw region_editor bp camera_pos scale mouse_pos) ;
-      period_pressed = (fun () -> ()) ;
-      comma_pressed = (fun () -> ()) ;
-      mouse_click_left = (fun bp cell_pos camera_pos scale-> click_left region_editor bp cell_pos camera_pos scale) ;
-      mouse_down_left = (fun _ _ -> ()) ;
-      mouse_released_left = (fun _ _ -> ())
-    }
-  in
-  let game_state =
-    ref @@ Editing {
-      blueprint = Board.Blueprint.create_empty board_cells_width board_cells_height "empty" ;
-      camera_pos = Vector2.create 0.0 0.0 ;
-      scale = ref 1.0 ;
-      edit_mode = object_selector_state
-    }
-  in
+  let init_bp = Board.Blueprint.create_empty board_cells_width board_cells_height "empty" in
+  let game_state = ref @@ Editing (create_edit_state init_bp) in
   let save_board (bp : Board.Blueprint.t) : unit =
     let opt_filename = GuiTools.get_input_string "Enter filename to save board to" in
     match opt_filename with
@@ -172,12 +215,7 @@ let () =
     match opt_filename with
     | Some(filename) ->
       let bp = Board.Blueprint.deserialize filename in
-      game_state := Editing {
-        blueprint = bp ;
-        camera_pos = Vector2.create 0.0 0.0 ;
-        scale = ref 1.0 ;
-        edit_mode = object_selector_state
-      }
+      game_state := Editing (create_edit_state bp)
     | None ->
       ()
   in
@@ -207,18 +245,20 @@ let () =
       else if is_key_down Key.Left_control && is_key_pressed Key.P then
         game_state := Playing (Board.create_from_blueprint blueprint)
       else if is_key_pressed Key.One then
-        edit_state.edit_mode <- object_selector_state
+        edit_state.edit_mode <- edit_state.object_selector_mode
       else if is_key_pressed Key.Two then
-        edit_state.edit_mode <- agent_selector_state
+        edit_state.edit_mode <- edit_state.agent_selector_mode
       else if is_key_pressed Key.Three then
-        edit_state.edit_mode <- region_editor_mode
+        edit_state.edit_mode <- edit_state.region_editor_mode
+      else if is_key_pressed Key.Four then
+        edit_state.edit_mode <- edit_state.ambient_selector_mode
       else if (is_key_pressed Key.O) && (is_key_down Key.Left_control) then
         begin
           let opt_obj = get_static_obj () in
           match opt_obj with
           | Some obj ->
-            edit_state.edit_mode <- object_selector_state;
-            ObjectSelector.set_obj object_selector obj
+            edit_state.edit_mode <- edit_state.object_selector_mode;
+            ObjectSelector.set_obj edit_state.object_selector obj
           | None ->
             ()
         end
@@ -227,8 +267,8 @@ let () =
           let opt_agent_class = get_agent_class () in
           match opt_agent_class with
           | Some agent_class ->
-            edit_state.edit_mode <- agent_selector_state;
-            AgentClassSelector.set_obj agent_selector agent_class;
+            edit_state.edit_mode <- edit_state.agent_selector_mode;
+            AgentClassSelector.set_obj edit_state.agent_selector agent_class;
           | None ->
             ()
         end

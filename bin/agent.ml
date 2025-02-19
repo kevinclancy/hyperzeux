@@ -109,6 +109,9 @@ let rec resume (agent : t) (prev_result : Actions.action_result) : Actions.actio
 let position (agent : t) : position =
   Puppet.get_pos agent.puppet
 
+let set_state (agent : t) (state : AgentState.t) : unit =
+  agent.agent_state <- state
+
 let color (agent : t) : Raylib.Color.t =
   Puppet.get_color agent.puppet
 

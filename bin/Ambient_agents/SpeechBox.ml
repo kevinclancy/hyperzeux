@@ -54,7 +54,7 @@ let speech_box_class : ambient_agent_class = {
 
   initial_state = AmbientAgentState.create hidden_state ();
 
-  speed = 0.3 ;
+  speed = 1.0 ;
 
   name = "SpeechBox"
 }

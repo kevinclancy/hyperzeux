@@ -9,7 +9,7 @@ let say (msg : string) : unit =
   let finished = ref false in
   Channel.send_msg Channels.Common.speech (msg, finished);
   while not !finished do
-    ignore (Effect.perform @@ Act Wait)
+    ignore (Effect.perform @@ Act Idle)
   done
 
 let script (board : board_interface) (me : Puppet.t) : unit =

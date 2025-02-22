@@ -100,14 +100,22 @@ let set_state (agent : t) (state : AgentState.t) : unit =
 let rec resume (agent : t) (prev_result : Actions.action_result) : Actions.action =
   let open Effect.Deep in
   let open Actions in
-  agent.action_meter <- agent.action_meter +. (Raylib.get_frame_time ()) *. agent.speed *. Config.speed;
-  if agent.action_meter > 1.0 then
+  let action_delta = (Raylib.get_frame_time ()) *. agent.speed *. Config.speed in
+  agent.action_meter <- agent.action_meter +. action_delta;
+  if agent.action_meter >= 1.0 then
     begin
-      agent.action_meter <- agent.action_meter -. (Float.round agent.action_meter);
       begin match AgentState.resume agent.agent_state agent.board agent.puppet prev_result with
+      | PerformAction(Actions.Idle as a)
+      | PerformAction(Actions.Wait as a) ->
+        (** Waiting and Idling do not consume action points -- this is so there is not a weird delay
+            before the next action this agent performs *)
+        agent.action_meter <- max agent.action_meter 1.0;
+        a
       | PerformAction(a) ->
+        agent.action_meter <- agent.action_meter -. (Float.round agent.action_meter);
         a
       | ChangeState(s) ->
+        agent.action_meter <- agent.action_meter -. (Float.round agent.action_meter);
         set_state agent s;
         Actions.Idle
       end

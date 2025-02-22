@@ -14,7 +14,7 @@ type ('res, 'handle_args) t_in_handler = {
 let create (name : string) : 'msg t =
   {
     name;
-    queues = Weak.create 7
+    queues = Weak.create 14
   }
 
 let send_msg (channel : 'msg t) (msg : 'msg) : unit =
@@ -24,16 +24,16 @@ let send_msg (channel : 'msg t) (msg : 'msg) : unit =
 
 let allocate_new_queue (channel : 'msg t) : 'msg Queue.t =
   let opt_queue = ref None in
-  for i = 0 to (Weak.length channel.queues) - 1 do
-    if Option.is_none !opt_queue && not (Weak.check channel.queues i) then
-      begin
-        let new_queue = Some(Queue.create ()) in
-        opt_queue := new_queue;
-        Weak.set channel.queues i new_queue;
-      end;
+  while Option.is_none !opt_queue do
+    for i = 0 to (Weak.length channel.queues) - 1 do
+      let new_queue = Some(Queue.create ()) in
+      opt_queue := new_queue;
+      Weak.set channel.queues i new_queue;
+    done;
+    if Option.is_none !opt_queue then
+      Gc.major ();
   done;
   assert (Option.is_some !opt_queue);
-  (* If the above assertion fails then we allocated too many input ports for this channel *)
   Option.get !opt_queue
 
 let attach_handler (channel : 'msg t)

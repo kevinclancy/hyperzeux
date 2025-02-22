@@ -41,10 +41,17 @@ and 's state_functions = {
   (** [key_down_released self private_data] callback called when the down-arrow key is pressed *)
 }
 
+and resume_result =
+  | PerformAction of Actions.action
+  (** [PerformAction a] Tells the agent to submit action [a] to the board *)
+  | ChangeState of t
+  (** [ChangeState s] Tells the agent to change to state [s] and submit an [Idle] action to the board  *)
+
 and script_state =
-  | BeginScript of (board_interface -> Puppet.t -> unit)
-  (** [BeginScript script] Agent will subsequently begin executing [script] *)
-  | RunningAgent of (Actions.action_result, Actions.action) Effect.Deep.continuation
+  | BeginScript of (board_interface -> Puppet.t -> t option)
+  (** [BeginScript script] Agent will subsequently begin executing [script]
+      Returns [Some(s)] to transition to state [s], or [None] to remain in current state while Idling *)
+  | RunningAgent of (Actions.action_result, resume_result) Effect.Deep.continuation
   (** [RunningAgent cont] where [cont] may produce [Act] effects *)
   | Idling
   (** [Idling] Agent is waiting to respond to stimuli *)
@@ -87,6 +94,10 @@ type 's blueprint = {
   (** Properties shared by all agent state blueprints, regardless of private data type *)
 }
 
+
+exception ChangeState of t
+(** ChangeState(s) signals a change to state [s] *)
+
 let empty_state_functions = {
   script = None ;
   create_handlers = None ;
@@ -127,7 +138,11 @@ let create (state_bp : 's blueprint)
       script_state =
         begin match state_functions.script with
         | Some f ->
-          BeginScript(fun board puppet -> f board puppet priv_data)
+          BeginScript(fun board puppet ->
+            try (f board puppet priv_data; None) with
+            | ChangeState(s) ->
+              Some(s)
+          )
         | None ->
           Idling
         end;
@@ -209,19 +224,24 @@ let name (state : t) : string =
 let region_name (state : t) : string option =
   state.region_name
 
-let resume (state : t) (board : board_interface) (puppet : Puppet.t) (prev_result : Actions.action_result) : Actions.action =
+let resume (state : t) (board : board_interface) (puppet : Puppet.t) (prev_result : Actions.action_result) : resume_result =
   let open Effect.Deep in
   let open Actions in
   match state.script_state with
   | Idling ->
-    Actions.Idle
+    PerformAction(Actions.Idle)
   | RunningAgent k ->
     continue k prev_result
   | BeginScript script ->
     match_with
       (script board)
       puppet
-      { retc = (fun _ -> state.assert_invariants board puppet; state.script_state <- Idling; Actions.Wait) ;
+      { retc = (fun result ->
+        match result with
+        | None ->
+          state.assert_invariants board puppet; state.script_state <- Idling; PerformAction(Actions.Wait)
+        | Some(s) ->
+          state.assert_invariants board puppet; ChangeState(s)) ;
         exnc = raise ;
         effc = fun (type a) (eff : a Effect.t) ->
           match eff with
@@ -229,7 +249,7 @@ let resume (state : t) (board : board_interface) (puppet : Puppet.t) (prev_resul
             Some (function (k : (a, _) continuation) ->
               state.assert_invariants board puppet;
               state.script_state <- RunningAgent k;
-              action
+              PerformAction(action)
             )
           | _ ->
             None

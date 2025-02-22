@@ -12,48 +12,8 @@ let say (msg : string) : unit =
     ignore (Effect.perform @@ Act Wait)
   done
 
-let rec idle_state : unit AgentState.blueprint = {
-  state_functions = {
-    AgentState.empty_state_functions with
-      receive_bump = Some(fun (board : board_interface) (me : Puppet.t) () (other : PuppetExternal.t) ->
-        Some(AgentState.create talking_state ())
-      )
-  };
+let script (board : board_interface) (me : Puppet.t) : unit =
+  say "hello world";
+  say "goodbye world"
 
-  props = {
-    region_name = None ;
-    name = "Idle"
-  }
-}
-
-and talking_state : unit AgentState.blueprint = {
-  state_functions = {
-    AgentState.empty_state_functions with
-      script = Some(fun (board : board_interface) (me : Puppet.t) () ->
-        say "hello world";
-        say "goodbye world";
-      )
-  };
-
-  props = {
-    region_name = None ;
-    name = "Talking"
-  }
-}
-
-let button_class : agent_class = {
-  states = StringMap.of_list [
-    ("Idle", idle_state.props) ;
-    ("Talking", talking_state.props) ;
-  ];
-
-  initial_state = AgentState.create idle_state ();
-
-  preview_texture_name = "person_south_recon.png";
-
-  preview_color = Raylib.Color.red;
-
-  speed = 0.3;
-
-  name = "button"
-}
+let button_class : agent_class = AgentMakers.bump_bot "button" "person_south_recon.png" Raylib.Color.red script

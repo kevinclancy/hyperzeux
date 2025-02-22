@@ -94,6 +94,9 @@ let handle_messages (agent : t) : unit =
   | None ->
     ()
 
+let set_state (agent : t) (state : AgentState.t) : unit =
+  agent.agent_state <- state
+
 let rec resume (agent : t) (prev_result : Actions.action_result) : Actions.action =
   let open Effect.Deep in
   let open Actions in
@@ -101,7 +104,13 @@ let rec resume (agent : t) (prev_result : Actions.action_result) : Actions.actio
   if agent.action_meter > 1.0 then
     begin
       agent.action_meter <- agent.action_meter -. (Float.round agent.action_meter);
-      AgentState.resume agent.agent_state agent.board agent.puppet prev_result
+      begin match AgentState.resume agent.agent_state agent.board agent.puppet prev_result with
+      | PerformAction(a) ->
+        a
+      | ChangeState(s) ->
+        set_state agent s;
+        Actions.Idle
+      end
     end
   else
     Actions.Idle
@@ -109,8 +118,6 @@ let rec resume (agent : t) (prev_result : Actions.action_result) : Actions.actio
 let position (agent : t) : position =
   Puppet.get_pos agent.puppet
 
-let set_state (agent : t) (state : AgentState.t) : unit =
-  agent.agent_state <- state
 
 let color (agent : t) : Raylib.Color.t =
   Puppet.get_color agent.puppet

@@ -5,6 +5,13 @@ type t
 (** The "mental state" of an agent at a specific point in time.
     Should be related to some goal, e.g. a state for walking to a waypoint *)
 
+type resume_result =
+  | PerformAction of Actions.action
+  (** [PerformAction a] Tells the agent to submit action [a] to the board *)
+  | ChangeState of t
+  (** [ChangeState s] Tells the agent to change to state [s] and submit an [Idle] action to the board  *)
+
+
 type 's state_functions = {
   (** Functions for controlling an agent, where ['s] is the type of the agent's private data, i.e. its "memory" *)
 
@@ -67,6 +74,9 @@ type 's blueprint = {
   (** Properties shared by all agent state blueprints, regardless of private data type *)
 }
 
+exception ChangeState of t
+(** ChangeState(s) signals a change to state [s] *)
+
 val create : 's blueprint -> 's -> t
 (** [create blueprint initial_state] Creates a new agent state from [blueprint]
     using [initial_state] as initial state *)
@@ -77,7 +87,7 @@ val name : t -> string
 val region_name : t -> string option
 (** [egion_name s] is the region we expect an agent to stay inside while in state [s] *)
 
-val resume : t -> board_interface -> Puppet.t -> Actions.action_result -> Actions.action
+val resume : t -> board_interface -> Puppet.t -> Actions.action_result -> resume_result
 (** [resume state prev_result] Resume the [state]'s coroutine, where [prev_result] tells whether
     the previously yielded action suceeded *)
 

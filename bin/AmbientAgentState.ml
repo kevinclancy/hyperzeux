@@ -228,25 +228,14 @@ let resume (state : t) (board : board_interface) : unit =
   | RunningAgent k ->
     continue k ()
   | BeginScript script ->
-    match_with
-      (fun () -> script board)
+    match script board with
+    | () ->
+      state.assert_invariants board;
+      state.script_state <- Idling
+    | effect (AmbientAction action), k ->
+      state.assert_invariants board;
+      state.script_state <- RunningAgent k;
       ()
-      { retc = (fun _ -> state.assert_invariants board; state.script_state <- Idling; ()) ;
-        exnc = raise ;
-        effc = fun (type a) (eff : a Effect.t) ->
-          match eff with
-          | AmbientAction () ->
-            Some (function (k : (a, _) continuation) ->
-              state.assert_invariants board;
-              state.script_state <- RunningAgent k;
-              ()
-            )
-          | _ ->
-            None
-      }
-
-(** [resume state prev_result] Resume the [state]'s coroutine, where [prev_result] tells whether
-    the previously yielded action suceeded *)
 
 let handle_messages (state : t) (board : board_interface) : t option =
   let handle_channel (handler : channel_handler) : t option =

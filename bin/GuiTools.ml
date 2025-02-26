@@ -1,12 +1,5 @@
 open Common
 
-(** [trim_zeros txt] Returns [txt] with all of the zero bytes trimmed off of the end *)
-let trim_zeros (txt : string) : string =
-  if String.length txt > 0 && ((Char.code txt.[String.length txt - 1]) = 0) then
-    String.sub txt 0 (String.length txt - 1)
-  else
-    txt
-
 let get_input_string (description : string) : string option =
 (** [get_input_string description]
 
@@ -41,7 +34,7 @@ Displays an interactive textbox which receives a string from user input.
       begin
         Raygui.set_style (Default `Text_size) 24;
         let txt,_ = Raygui.text_box (rect 10.0 30.0 300.0 80.0) !edit_text true in
-        trim_zeros txt;
+        txt
       end;
       if (is_key_pressed Key.Enter) then
           choice := Some !edit_text;
@@ -81,7 +74,7 @@ Displays an interactive textbox which receives a string from user input.
           if is_forbidden !edit_text then
               Raylib.draw_text "name already used!" 10 120 24 Raylib.Color.red;
           let txt,_ = Raygui.text_box (rect 10.0 30.0 300.0 80.0) !edit_text true in
-          trim_zeros txt
+          txt
         end;
       if (is_key_pressed Key.Enter) && (not @@ is_forbidden !edit_text) && (not @@ String.equal !edit_text "") then
         choice := Some !edit_text;
@@ -117,7 +110,6 @@ let get_item (search : string -> 'a list)
         Raygui.set_style (Default `Text_size) 24;
         Raygui.text_box (rect 10.0 10.0 300.0 50.0) !edit_text true
       in
-      let txt = trim_zeros txt in
       if not @@ String.equal !edit_text txt then
         begin
           edit_text := txt;

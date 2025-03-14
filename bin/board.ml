@@ -379,7 +379,9 @@ type grid_cell = {
 type t = {
   grid : grid_cell ref array array ;
 
-  mutable agents : (Agent.t * (Actions.action_result ref)) StringMap.t;
+  camera : CameraAgent.t ;
+
+  agents : ((Agent.t * (Actions.action_result ref)) StringMap.t) ref;
   (** Maps each agent name to agent, paired with result of last action the agent yielded to board
       (or Success if the agent has not yet performed an action). *)
 
@@ -395,35 +397,6 @@ type t = {
   render_texture : Raylib.RenderTexture.t ;
   (** Texture to render to screen *)
 }
-
-let create_empty (width : int)
-                 (height : int)
-                 (empty_object : static_object)  : t =
-  let open Raylib in
-  let static_texture =
-    load_render_texture
-      (width * Config.char_width)
-      (height * Config.char_height)
-  in
-  begin_texture_mode static_texture;
-  clear_background Color.black;
-  end_texture_mode ();
-  {
-    grid =
-      Array.init Config.board_cells_width (fun _ ->
-        Array.init Config.board_cells_height (fun _ ->
-          ref { static_object = empty_object ; static_object_color = Raylib.Color.white ; agent = None }
-        )
-      );
-    agents = StringMap.empty ;
-    ambient_agents = StringMap.empty ;
-    waypoints = StringMap.empty ;
-    static_texture ;
-    render_texture =
-      load_render_texture
-        (width * Config.char_width)
-        (height * Config.char_height);
-  }
 
 let get_cell (board : t) (pos : position) : grid_cell =
   !(Array.get (Array.get board.grid pos.x) pos.y)
@@ -442,8 +415,8 @@ let is_occupied (board : t) (pos : position) =
 
 let add_agent (board : t) (agent : Agent.t) : unit =
   assert (not @@ is_occupied board (Agent.position agent));
-  assert (not @@ StringMap.mem (Agent.name agent) board.agents);
-  board.agents <- StringMap.add (Agent.name agent) (agent, ref Actions.Success) board.agents
+  assert (not @@ StringMap.mem (Agent.name agent) !(board.agents));
+  board.agents := StringMap.add (Agent.name agent) (agent, ref Actions.Success) !(board.agents)
 
 let add_ambient_agent (board : t) (agent : AmbientAgent.t) : unit =
   assert (not @@ StringMap.mem (AmbientAgent.name agent) board.ambient_agents);
@@ -458,7 +431,7 @@ let prep_draw (board : t) : unit =
       draw_texture_ex (Agent.texture agent) pos 0.0 1.0 (Agent.color agent);
     in
     draw_texture_ex (RenderTexture.texture board.static_texture) (Vector2.create 0.0 0.0) 0.0 1.0 Color.white;
-    StringMap.iter draw_agent board.agents;
+    StringMap.iter draw_agent !(board.agents);
   end_texture_mode ()
 
 let draw (board : t) (pos : Raylib.Vector2.t) (scale : float) : unit =
@@ -468,11 +441,13 @@ let draw (board : t) (pos : Raylib.Vector2.t) (scale : float) : unit =
   let height = (Float.of_int Config.board_pixels_height) in
   let src = Rectangle.create 0.0 0.0 width (-. height) in
   let dest = Rectangle.create 0.0 0.0 (width *. scale) (height *. scale) in
-  draw_texture_pro (RenderTexture.texture board.render_texture) src dest pos 0.0 Color.white;
+  let draw_pos = Vector2.subtract pos (CameraAgent.get_pos board.camera) in
+  draw_texture_pro (RenderTexture.texture board.render_texture) src dest draw_pos 0.0 Color.white;
   StringMap.iter (fun _ ambient -> AmbientAgent.draw ambient) board.ambient_agents
 
 let update (board : t) : unit =
   let open Raylib in
+  let dt = Raylib.get_frame_time () in
   let update_ambient_agent (_ : string) (agent : AmbientAgent.t) : unit =
     AmbientAgent.handle_messages agent;
     AmbientAgent.update_input agent;
@@ -509,7 +484,8 @@ let update (board : t) : unit =
       ()
   in
   StringMap.iter update_ambient_agent board.ambient_agents;
-  StringMap.iter update_agent board.agents
+  StringMap.iter update_agent !(board.agents);
+  CameraAgent.resume board.camera dt
 
 let create_from_blueprint (blueprint : Blueprint.t) : t =
   let open Raylib in
@@ -522,30 +498,34 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
     }
   in
   let grid = Array.map (fun a -> Array.map (fun bp -> create_static_obj !bp) a) blueprint.static_objects in
-  let board_intf = {
+  let agents = ref StringMap.empty in
+  let board_intf : board_interface = {
       get_waypoint = (fun (name : string) ->
         StringMap.find name blueprint.waypoints
       );
       get_region = (fun (name : string) ->
         StringMap.find name blueprint.regions
-      )
+      );
+      get_puppet = (fun (name : string) ->
+        Agent.puppet (fst (StringMap.find name !agents))
+      );
   } in
   let create_ambient_agent (agent_bp : Blueprint.ambient_agent_blueprint) : AmbientAgent.t =
     let agent_class = AmbientAgentClassMap.get agent_bp.agent_class_name in
-    AmbientAgent.create board_intf agent_class agent_bp.agent_name
+    AmbientAgent.create board_intf agent_class
   in
   let ambient_agents = StringMap.map (fun x -> create_ambient_agent x) blueprint.ambient_agents in
   let create_agent (agent_bp : Blueprint.agent_blueprint) : Agent.t =
     let agent_class = AgentClassMap.get agent_bp.agent_class_name in
     Agent.create board_intf agent_class agent_bp.agent_name agent_bp.pos agent_bp.color
   in
-  let agents = StringMap.map (fun x -> (create_agent x, ref Actions.Success)) blueprint.agents in
+  agents := StringMap.map (fun x -> (create_agent x, ref Actions.Success)) blueprint.agents;
   let add_agent (_ : string) ((agent, _) : Agent.t * Actions.action_result ref) : unit =
     let {x;y} = Agent.position agent in
     let cell = Array.get (Array.get grid x) y in
     cell := { !(cell) with agent = Some agent }
   in
-  StringMap.iter add_agent agents;
+  StringMap.iter add_agent !agents;
   let board_width = blueprint.width * Config.char_width in
   let board_height = blueprint.height * Config.char_height in
   let static_texture = load_render_texture board_width board_height in
@@ -573,6 +553,7 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
   end_texture_mode ();
   {
     grid;
+    camera = CameraAgent.create board_intf (CurrentCameraClass.get ()) ;
     agents = agents;
     ambient_agents = ambient_agents ;
     waypoints = blueprint.waypoints;

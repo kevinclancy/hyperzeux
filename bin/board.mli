@@ -66,10 +66,6 @@ end
 
 type t
 
-val create_empty : int -> int -> static_object -> t
-(** [create_empty width height empty_object] Creates an empty board [width] cells across and [height] cells high.
-    Each cells has [empty_object] as a static object. *)
-
 val create_from_blueprint : Blueprint.t -> t
 (** [create_from_blueprint blueprint] Creates a board from [blueprint] *)
 

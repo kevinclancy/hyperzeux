@@ -94,7 +94,6 @@ type 's blueprint = {
   (** Properties shared by all agent state blueprints, regardless of private data type *)
 }
 
-
 exception ChangeState of t
 (** ChangeState(s) signals a change to state [s] *)
 

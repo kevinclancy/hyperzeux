@@ -112,10 +112,10 @@ let rec resume (agent : t) (prev_result : Actions.action_result) : Actions.actio
         agent.action_meter <- max agent.action_meter 1.0;
         a
       | PerformAction(a) ->
-        agent.action_meter <- agent.action_meter -. (Float.round agent.action_meter);
+        agent.action_meter <- 0.;
         a
       | ChangeState(s) ->
-        agent.action_meter <- agent.action_meter -. (Float.round agent.action_meter);
+        agent.action_meter <- 0.;
         set_state agent s;
         Actions.Idle
       end

@@ -4,11 +4,11 @@ open BoardInterface
 
 type t
 
-type ambient_agent_class = {
-  states : AmbientAgentState.blueprint_props StringMap.t ;
+type camera_agent_class = {
+  states : CameraAgentState.blueprint_props StringMap.t ;
   (** Maps name of each state that agents of this class can enter to the state itself *)
 
-  initial_state : AmbientAgentState.t ;
+  initial_state : CameraAgentState.t ;
   (** The state that the agent starts out in *)
 
   speed : float ;
@@ -18,12 +18,11 @@ type ambient_agent_class = {
 }
 
 val create : board_interface ->
-             ambient_agent_class ->
+             camera_agent_class ->
              t
-(** [create board agent_blueprint name] Creates an agent *)
+(** [create board agent_blueprint] Creates an agent *)
 
-val draw : t -> unit
-(** [draw agent] draws [agent] to screen *)
+val get_pos : t -> vec2
 
 val name : t -> string
 (** The name of the ambient agent *)
@@ -31,8 +30,8 @@ val name : t -> string
 val update_input : t -> unit
 (** Update agent state in response to user input *)
 
-val resume : t -> unit
-(** [resume agent] Resumes [ambient agent]'s script. *)
+val resume : t -> float -> unit
+(** [resume agent t_delta_seconds] Resumes [ambient agent]'s script. *)
 
 val handle_messages : t -> unit
 (** Handle all messages from incoming channels *)

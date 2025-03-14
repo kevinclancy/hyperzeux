@@ -194,11 +194,17 @@ let () =
 
   AmbientAgentClassMap.add Ambient_agents.SpeechBox.speech_box_class;
 
+  CurrentCameraClass.set Game_camera.Camera.camera;
+
   StaticObjectMap.add { name = "empty" ; texture_name = "empty_cell.png" ; traversable = true };
   StaticObjectMap.add { name = "wall" ; texture_name = "solid_wall.png" ; traversable = false };
   StaticObjectMap.add { name = "checkered_wall" ; texture_name = "checkered_wall.png" ; traversable = false };
   StaticObjectMap.add { name = "plant_1" ; texture_name = "plant_1.png" ; traversable = true };
   StaticObjectMap.add { name = "plant_2" ; texture_name = "plant_2.png" ; traversable = true };
+
+  Raylib.init_audio_device ();
+  let song = Raylib.load_music_stream "music/song3.mp3" in
+  (* Raylib.play_music_stream song; *)
 
   let init_bp = Board.Blueprint.create_empty board_cells_width board_cells_height "empty" in
   let game_state = ref @@ Editing (create_edit_state init_bp) in
@@ -220,6 +226,7 @@ let () =
       ()
   in
   while not (window_should_close ()) do
+    Raylib.update_music_stream song;
     match !game_state with
     | Playing b ->
       Board.update b;

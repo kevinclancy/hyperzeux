@@ -41,6 +41,15 @@ let get_mouse_boardpos (camera_pos : Raylib.Vector2.t) (scale : float) : positio
   let y = Int.of_float @@ ((Vector2.y mouse_pos) +. (Vector2.y camera_pos)) /. (scale *. Config.char_height_f) in
   { x ; y }
 
+let disc_to_cont (cell_pos : position) : vec2 =
+  (** @param cell_pos : position : the discrete board space coordinate of a cell
+      @return vec2 : the continuous board-space coordinate of the center of the cell at [cell_pos] *)
+
+  let { x = cell_col ; y = cell_row } = cell_pos in
+  Raylib.Vector2.create
+    (((Float.of_int cell_col) +. 0.5) *. Config.char_width_f)
+    (((Float.of_int cell_row) +. 0.5) *. Config.char_height_f)
+
 let boardpos_top_left (camera_pos : Raylib.Vector2.t) (scale : float) (cell_pos : position) : Raylib.Vector2.t =
   (** [boardpos_top_left camera_pos scale cell_pos] Get the screen position of the top-left
       corner of the board cell identified by [cell_pos] *)

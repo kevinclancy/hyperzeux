@@ -80,8 +80,8 @@ val add_agent : t -> Agent.t -> unit
 val prep_draw : t -> unit
 (** [prep_draw board] Prepare board for drawing *)
 
-val draw : t -> Raylib.Vector2.t -> float -> unit
-(** [draw board pos scale] Draw the board positioned at [pos] scaled by [scale] *)
+val draw : t -> unit
+(** [draw board] Draw the board (the scale and camera position are determined by the camera agent) *)
 
 val update : t -> unit
 (** [update board] Updates all agents on the board *)

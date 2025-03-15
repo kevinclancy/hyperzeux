@@ -9,8 +9,6 @@ type camera_agent_class = {
   initial_state : CameraAgentState.t ;
   (** The state that the agent starts out in *)
 
-  speed : float ;
-
   name : string ;
   (** The name of the agent class *)
 }
@@ -24,12 +22,6 @@ type t = {
 
   mutable agent_state : CameraAgentState.t ;
   (** The current scripts and set of callbacks used by this agent *)
-
-  speed : float ref ;
-  (** speed in actions per second, should be at most 1.0 *)
-
-  action_meter : float ref ;
-  (** percentage of wait completed before next action is allowed *)
 }
 
 let create (board : board_interface)
@@ -39,8 +31,6 @@ let create (board : board_interface)
     name = agent_class.name;
     board ;
     agent_state = agent_class.initial_state ;
-    action_meter = ref 0.;
-    speed  = ref agent_class.speed;
   }
 
 let name (agent : t) : string =
@@ -77,17 +67,13 @@ let update_input (agent : t) : unit =
 let rec resume (agent : t) (t_delta_seconds : float) : unit =
   let open Effect.Deep in
   let open Actions in
-  agent.action_meter := !(agent.action_meter) +. (Raylib.get_frame_time ()) *. !(agent.speed) *. Config.speed;
-  if !(agent.action_meter) > 1.0 then
-    begin
-      agent.action_meter := !(agent.action_meter) -. (Float.round !(agent.action_meter));
-      CameraAgentState.resume agent.agent_state agent.board t_delta_seconds
-    end
-  else
-    ()
+  CameraAgentState.resume agent.agent_state agent.board t_delta_seconds
 
 let get_pos (agent : t) : vec2 =
   CameraAgentState.get_pos agent.agent_state
+
+let get_scale (agent : t) : float =
+  CameraAgentState.get_scale agent.agent_state
 
 let handle_messages (agent : t) : unit =
   match CameraAgentState.handle_messages agent.agent_state agent.board with

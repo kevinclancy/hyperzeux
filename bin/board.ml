@@ -434,14 +434,15 @@ let prep_draw (board : t) : unit =
     StringMap.iter draw_agent !(board.agents);
   end_texture_mode ()
 
-let draw (board : t) (pos : Raylib.Vector2.t) (scale : float) : unit =
+let draw (board : t) : unit =
   let open Raylib in
   clear_background Color.gray;
+  let scale = CameraAgent.get_scale board.camera in
   let width = (Float.of_int Config.board_pixels_width) in
   let height = (Float.of_int Config.board_pixels_height) in
   let src = Rectangle.create 0.0 0.0 width (-. height) in
   let dest = Rectangle.create 0.0 0.0 (width *. scale) (height *. scale) in
-  let draw_pos = Vector2.subtract pos (CameraAgent.get_pos board.camera) in
+  let draw_pos = (CameraAgent.get_pos board.camera) ^* scale in
   draw_texture_pro (RenderTexture.texture board.render_texture) src dest draw_pos 0.0 Color.white;
   StringMap.iter (fun _ ambient -> AmbientAgent.draw ambient) board.ambient_agents
 

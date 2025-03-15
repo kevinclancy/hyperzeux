@@ -18,6 +18,9 @@ type 's state_functions = {
   get_position : 's -> Raylib.Vector2.t ;
   (** Return the pixel-space position of the camera relative to the top-left of the board *)
 
+  get_scale : 's -> float ;
+  (** Returns the scale of the camera *)
+
   assert_invariants : (board_interface -> 's -> unit) option ;
   (** Function to call to assert state invariants. None means there are no assertable invariants. *)
 
@@ -63,6 +66,7 @@ and t = {
   handlers : channel_handler list ;
   mutable script_state : script_state ;
   get_position : unit -> vec2 ;
+  get_scale : unit -> float ;
   t_delta_seconds : float ref;
   key_left_pressed : board_interface -> t option ;
   key_right_pressed : board_interface -> t option ;
@@ -100,6 +104,7 @@ let empty_state_functions = {
   script = None ;
   create_handlers = None ;
   get_position = (function _ -> vec2 0. 0.) ;
+  get_scale = (function _ -> 1.);
   assert_invariants = None ;
   key_left_pressed = None ;
   key_up_pressed = None ;
@@ -133,6 +138,8 @@ let create (bp : 's blueprint) (priv_data : 's) : t =
         end;
       get_position =
         (fun () -> state_functions.get_position priv_data);
+      get_scale =
+        (fun () -> state_functions.get_scale priv_data);
       t_delta_seconds = ref 0.;
       key_left_pressed =
         begin match state_functions.key_left_pressed with
@@ -218,6 +225,9 @@ let name (state : t) : string =
 
 let get_pos (state : t) : vec2 =
   state.get_position ()
+
+let get_scale (state : t) : float =
+  state.get_scale ()
 
 let resume (state : t) (board : board_interface) (t_delta_seconds : float) : unit =
   let open Effect.Deep in

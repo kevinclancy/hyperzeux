@@ -11,8 +11,6 @@ type camera_agent_class = {
   initial_state : CameraAgentState.t ;
   (** The state that the agent starts out in *)
 
-  speed : float ;
-
   name : string ;
   (** The name of the agent class *)
 }
@@ -23,6 +21,8 @@ val create : board_interface ->
 (** [create board agent_blueprint] Creates an agent *)
 
 val get_pos : t -> vec2
+
+val get_scale : t -> float
 
 val name : t -> string
 (** The name of the ambient agent *)

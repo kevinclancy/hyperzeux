@@ -18,6 +18,9 @@ type 's state_functions = {
   get_position : 's -> Raylib.Vector2.t ;
   (** Return the pixel-space position of the camera relative to the top-left of the board *)
 
+  get_scale : 's -> float ;
+  (** Returns the scale of the camera *)
+
   assert_invariants : (board_interface -> 's -> unit) option ;
   (** Function to call to assert state invariants. None means there are no assertable invariants. *)
 
@@ -74,6 +77,8 @@ val create : 's blueprint -> 's -> t
     using [initial_state] as initial state *)
 
 val get_pos : t -> vec2
+
+val get_scale : t -> float
 
 val name : t -> string
 (** [state_name s] is the name of the state [s] *)

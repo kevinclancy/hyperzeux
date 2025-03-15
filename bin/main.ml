@@ -166,7 +166,7 @@ let create_edit_state (bp : Board.Blueprint.t) : edit_state =
 
 let () =
   Printexc.record_backtrace true;
-  init_window Config.screen_width Config.screen_height "Visions of Evermore";
+  init_window Config.screen_width Config.screen_height "Hyperzeux";
   set_target_fps 60;
 
   (* let texture_map : Raylib.Texture.t StringMap.t ref = ref StringMap.empty in
@@ -232,7 +232,7 @@ let () =
       Board.update b;
       Board.prep_draw b;
       begin_drawing ();
-        Board.draw b (Vector2.zero ()) 4.0;
+        Board.draw b;
       end_drawing ();
     | Editing ({ blueprint ; camera_pos ; scale ; edit_mode } as edit_state) ->
       let dt = Raylib.get_frame_time () in

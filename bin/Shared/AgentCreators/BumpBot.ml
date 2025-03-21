@@ -3,13 +3,10 @@ open AgentState
 open Agent
 open BoardInterface
 
-let set_state (s : AgentState.t) : unit =
-  raise (ChangeState s)
-
-let bump_bot (agent_name : string)
-             (texture_name : string)
-             (color : Raylib.Color.t)
-             (script : board_interface -> Puppet.t -> unit) : Agent.agent_class =
+let create (agent_name : string)
+           (texture_name : string)
+           (color : Raylib.Color.t)
+           (script : board_interface -> Puppet.t -> unit) : Agent.agent_class =
   (** [bump_bot agent_name texture_name color script] Creates an agent class named [agent_name], whose display image is named by
       [texture_name] and whose color is [color], and who performs [script] each time it receives a bump from the player.
       It will not restart the script if bumped while performing.  *)
@@ -36,7 +33,7 @@ let bump_bot (agent_name : string)
           (** TODO: change state to Idle at end of script *)
           script = Some (fun board puppet _ ->
             script board puppet;
-            set_state @@ AgentState.create idle_state ()
+            ScriptFunctions.set_state @@ AgentState.create idle_state ()
           )
     };
 

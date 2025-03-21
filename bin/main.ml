@@ -188,13 +188,13 @@ let () =
 
   FontMap.load "romulus.png";
 
-  AgentClassMap.add Agents.Button.button_class;
-  AgentClassMap.add Agents.Patroller.patroller_class;
-  AgentClassMap.add Agents.Player.player_class;
+  AgentClassMap.add Boards.Big_board.Agents.Button.button_class;
+  AgentClassMap.add Boards.Big_board.Agents.Patroller.patroller_class;
+  AgentClassMap.add Shared.Agents.Player.player_class;
 
-  AmbientAgentClassMap.add Ambient_agents.SpeechBox.speech_box_class;
+  AmbientAgentClassMap.add Shared.Ambient_agents.SpeechBox.speech_box_class;
 
-  CurrentCameraClass.set Game_camera.Camera.camera;
+  CurrentCameraClass.set Boards.Big_board.Camera.camera;
 
   StaticObjectMap.add { name = "empty" ; texture_name = "empty_cell.png" ; traversable = true };
   StaticObjectMap.add { name = "wall" ; texture_name = "solid_wall.png" ; traversable = false };

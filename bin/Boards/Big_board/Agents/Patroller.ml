@@ -2,7 +2,6 @@ open Common
 open Agent
 open AgentState
 open BoardInterface
-open Channels
 
 let walk_north (puppet : Puppet.t) =
   Puppet.set_texture puppet (TextureMap.get "person_north_recon.png");
@@ -37,13 +36,6 @@ let rec patrolling_state : unit AgentState.blueprint = {
           walk_west me;
           walk_west me;
         done;
-      );
-      create_handlers = Some(fun () ->
-        [
-          Channel.attach_handler (Buzzer.channel) (fun () (board, puppet) ->
-            Some(AgentState.create freaking_out_state ())
-          )
-        ]
       );
       receive_bump = Some(fun (board : board_interface) (me : Puppet.t) () (other : PuppetExternal.t) ->
         Some(AgentState.create freaking_out_state ())

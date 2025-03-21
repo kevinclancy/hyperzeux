@@ -13,7 +13,7 @@ let rec hidden_state : unit AmbientAgentState.blueprint = {
     AmbientAgentState.empty_state_functions with
       create_handlers = Some(fun () ->
         [
-          Channel.attach_handler (Channels.Common.speech) (fun (text, finished) board ->
+          Channel.attach_handler (Channels.Speech.speech) (fun (text, finished) board ->
             Some(AmbientAgentState.create visible_state (text, finished))
           )
         ]

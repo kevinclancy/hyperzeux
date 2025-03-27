@@ -26,7 +26,7 @@ let next_obj (selector : t) =
   selector.curr_object := (StaticObjectMap.get_next_elem !(selector.curr_object))
 
 let prev_obj (selector : t) =
-    selector.curr_object := (StaticObjectMap.get_next_elem !(selector.curr_object))
+    selector.curr_object := (StaticObjectMap.get_prev_elem !(selector.curr_object))
 
 let draw (selector : t) =
   let open Raylib in

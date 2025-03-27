@@ -17,6 +17,7 @@ let resources : ResourceBundleMap.resource_bundle_def = {
     "plant_2.png";
     "waypoint.png";
   ] ;
+  ascii_font_path = "charset.png" ;
   font_paths = [
     "romulus.png"
   ] ;

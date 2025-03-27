@@ -3,6 +3,7 @@ open Common
 type resource_bundle_def = {
   name : string ;
   texture_paths : string list ;
+  ascii_font_path : string ;
   font_paths : string list ;
   agent_classes : Agent.agent_class list ;
   ambient_agent_classes : AmbientAgent.ambient_agent_class list ;
@@ -23,6 +24,10 @@ let load_bundle (name : string) : unit =
 
   let bundle = get name in
   List.iter TextureMap.load bundle.texture_paths;
+
+  TextureMap.load_ascii_font bundle.ascii_font_path "ascii";
+  StaticObjectMap.add_ascii_font "ascii";
+
   List.iter FontMap.load bundle.font_paths;
   List.iter AgentClassMap.add bundle.agent_classes;
   List.iter AmbientAgentClassMap.add bundle.ambient_agent_classes;

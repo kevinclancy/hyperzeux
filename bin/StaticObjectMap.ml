@@ -7,3 +7,13 @@ include OrdMap.Make(
       x.name
   end
 )
+
+let add_ascii_font (font_prefix : string) =
+  for char_code = 32 to 127 do
+    let name = String.concat "" [font_prefix; Int.to_string char_code] in
+    add {
+      texture_name = name;
+      traversable = false ;
+      name = name
+    };
+  done

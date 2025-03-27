@@ -169,38 +169,8 @@ let () =
   init_window Config.screen_width Config.screen_height "Hyperzeux";
   set_target_fps 60;
 
-  (* let texture_map : Raylib.Texture.t StringMap.t ref = ref StringMap.empty in
-  texture_map := load !texture_map "person_forward_recon.png"; *)
-  TextureMap.load "person_south_recon.png";
-  TextureMap.load "person_north_recon.png";
-  TextureMap.load "person_east_recon.png";
-  TextureMap.load "person_west_recon.png";
-  TextureMap.load "person2_south.png";
-  TextureMap.load "person2_north.png";
-  TextureMap.load "person2_east.png";
-  TextureMap.load "person2_west.png";
-  TextureMap.load "empty_cell.png";
-  TextureMap.load "solid_wall.png";
-  TextureMap.load "checkered_wall.png";
-  TextureMap.load "plant_1.png";
-  TextureMap.load "plant_2.png";
-  TextureMap.load "waypoint.png";
-
-  FontMap.load "romulus.png";
-
-  AgentClassMap.add Boards.Big_board.Agents.Button.button_class;
-  AgentClassMap.add Boards.Big_board.Agents.Patroller.patroller_class;
-  AgentClassMap.add Shared.Agents.Player.player_class;
-
-  AmbientAgentClassMap.add Shared.Ambient_agents.SpeechBox.speech_box_class;
-
-  CurrentCameraClass.set Boards.Big_board.Camera.camera;
-
-  StaticObjectMap.add { name = "empty" ; texture_name = "empty_cell.png" ; traversable = true };
-  StaticObjectMap.add { name = "wall" ; texture_name = "solid_wall.png" ; traversable = false };
-  StaticObjectMap.add { name = "checkered_wall" ; texture_name = "checkered_wall.png" ; traversable = false };
-  StaticObjectMap.add { name = "plant_1" ; texture_name = "plant_1.png" ; traversable = true };
-  StaticObjectMap.add { name = "plant_2" ; texture_name = "plant_2.png" ; traversable = true };
+  ResourceBundleMap.add Boards.Big_board.ResourceBundle.resources;
+  ResourceBundleMap.load_bundle "big_board";
 
   Raylib.init_audio_device ();
   let song = Raylib.load_music_stream "music/song3.mp3" in

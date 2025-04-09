@@ -22,11 +22,26 @@ let get_curr_color (selector : t) : Raylib.Color.t =
 let set_obj (selector : t) (obj : static_object) =
   selector.curr_object := obj
 
-let next_obj (selector : t) =
+let next_obj (selector : t) : unit =
   selector.curr_object := (StaticObjectMap.get_next_elem !(selector.curr_object))
 
-let prev_obj (selector : t) =
+let prev_obj (selector : t) : unit =
     selector.curr_object := (StaticObjectMap.get_prev_elem !(selector.curr_object))
+
+let handle_keypress (selector : t) : bool =
+  let open Raylib in
+  if is_key_pressed Key.Comma then
+    begin
+      next_obj selector;
+      true
+    end
+  else if is_key_pressed Key.Period then
+    begin
+      next_obj selector;
+      true
+    end
+  else
+    false
 
 let draw (selector : t) =
   let open Raylib in

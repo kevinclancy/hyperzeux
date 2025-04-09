@@ -11,6 +11,12 @@ module Blueprint : sig
         of [width] by [height] cells, filling each cell with the static object whose index is
         [empty_obj_key]. *)
 
+    val get_width : t -> int
+    (** Get the number of columns in the board *)
+
+    val get_height : t -> int
+    (** Get the number of rows in the board *)
+
     val set_static_object : t -> position -> string -> Raylib.Color.t -> unit
     (** [set_static_object_key blueprint pos key color] Set position [pos] to static object key
         [key] and color [color] *)

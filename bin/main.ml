@@ -17,6 +17,7 @@ type selector_name =
   | StaticObjectSelector
   | RegionEditor
   | AmbientAgentList
+  | TextWriter
 
 type editor_mode = {
   (** A selector for the current type of object we are placing in the
@@ -32,11 +33,9 @@ type editor_mode = {
       the view position of the mouse
   *)
 
-  period_pressed : unit -> unit ;
-  (** Period (i.e '>') pressed -- typically cycle to next placeable game object *)
-
-  comma_pressed : unit -> unit ;
-  (** Comma (i.e. '<') pressed -- typically cycle to previous placeable game object *)
+  handle_keypress : Board.Blueprint.t -> bool ;
+  (** Handle any relevant pending keypresses, returning true if some keypress
+    was handled and false otherwise *)
 
   mouse_click_left : Board.Blueprint.t -> position -> vec2 -> float -> unit ;
   (** [mouse_click_left bp cursor_cell_pos camera_pos scale] The left mouse button is clicked with the cursor over the given board position *)
@@ -65,7 +64,9 @@ type edit_state = {
   region_editor : RegionEditor.t ;
   region_editor_mode : editor_mode ;
 
-  ambient_selector_mode : editor_mode
+  ambient_selector_mode : editor_mode ;
+
+  text_writer_mode : editor_mode
 }
 
 type game_state =
@@ -94,14 +95,15 @@ let create_edit_state (bp : Board.Blueprint.t) : edit_state =
   let agent_selector = AgentClassSelector.create () in
   let region_editor = RegionEditor.create () in
   let ambient_selector = AmbientClassSelector.create () in
+  let text_writer = TextWriter.create () in
+
   (** Begin using the static object selector *)
   let object_selector_mode : editor_mode =
     let open ObjectSelector in
     {
       name = StaticObjectSelector ;
       draw = (fun _ _ _ _ -> draw object_selector) ;
-      period_pressed = (fun () -> next_obj object_selector) ;
-      comma_pressed = (fun () -> prev_obj object_selector) ;
+      handle_keypress = (fun _ -> handle_keypress object_selector);
       mouse_click_left = (fun _ _ _ _ -> ()) ;
       mouse_down_left = instantiate object_selector ;
       mouse_released_left = (fun _ _ -> ())
@@ -113,8 +115,7 @@ let create_edit_state (bp : Board.Blueprint.t) : edit_state =
     {
       name = AgentSelector ;
       draw = (fun _ _ _ _ -> draw agent_selector) ;
-      period_pressed = (fun () -> next_obj agent_selector) ;
-      comma_pressed = (fun () -> prev_obj agent_selector) ;
+      handle_keypress = (fun _ -> handle_keypress agent_selector) ;
       mouse_click_left = (fun bp cell_pos _ _ -> instantiate agent_selector bp cell_pos) ;
       mouse_down_left = (fun _ _ -> ()) ;
       mouse_released_left = (fun _ _ -> ())
@@ -126,8 +127,7 @@ let create_edit_state (bp : Board.Blueprint.t) : edit_state =
     {
       name = AmbientAgentList ;
       draw = (fun bp _ _ _ -> draw ambient_selector bp) ;
-      period_pressed = (fun () -> ()) ;
-      comma_pressed = (fun () -> ()) ;
+      handle_keypress = (fun _ -> false) ;
       mouse_click_left = (fun _ _ _ _ -> ()) ;
       mouse_down_left = (fun _ _ -> ()) ;
       mouse_released_left = (fun _ _ -> ())
@@ -139,9 +139,19 @@ let create_edit_state (bp : Board.Blueprint.t) : edit_state =
     {
       name = RegionEditor ;
       draw = (fun bp camera_pos scale mouse_pos -> draw region_editor bp camera_pos scale mouse_pos) ;
-      period_pressed = (fun () -> ()) ;
-      comma_pressed = (fun () -> ()) ;
+      handle_keypress = (fun _ -> false) ;
       mouse_click_left = (fun bp cell_pos camera_pos scale-> click_left region_editor bp cell_pos camera_pos scale) ;
+      mouse_down_left = (fun _ _ -> ()) ;
+      mouse_released_left = (fun _ _ -> ())
+    }
+  in
+  let text_writer_mode : editor_mode =
+    let open TextWriter in
+    {
+      name = TextWriter ;
+      draw = (fun bp camera_pos scale mouse_pos -> draw text_writer bp camera_pos scale mouse_pos) ;
+      handle_keypress = (fun bp -> handle_keypress text_writer bp) ;
+      mouse_click_left = (fun bp cursor_cell_pos camera_pos scale -> click_left text_writer bp cursor_cell_pos camera_pos scale) ;
       mouse_down_left = (fun _ _ -> ()) ;
       mouse_released_left = (fun _ _ -> ())
     }
@@ -161,7 +171,9 @@ let create_edit_state (bp : Board.Blueprint.t) : edit_state =
     ambient_selector_mode ;
 
     region_editor ;
-    region_editor_mode
+    region_editor_mode ;
+
+    text_writer_mode
   }
 
 let () =
@@ -195,7 +207,7 @@ let () =
     | None ->
       ()
   in
-  while not (window_should_close ()) do
+  while not (window_should_close () && not (is_key_pressed Key.Escape)) do
     Raylib.update_music_stream song;
     match !game_state with
     | Playing b ->
@@ -215,10 +227,8 @@ let () =
       let wheel_delta = Raylib.get_mouse_wheel_move () in
       scale := !scale +. (Config.editor_zoom_speed *. wheel_delta *. dt);
 
-      if Raylib.is_key_pressed Key.Comma then
-        edit_mode.comma_pressed ()
-      else if is_key_pressed Key.Period then
-        edit_mode.period_pressed ()
+      if edit_mode.handle_keypress blueprint then
+        ()
       else if is_key_down Key.Left_control && is_key_pressed Key.P then
         game_state := Playing (Board.create_from_blueprint blueprint)
       else if is_key_pressed Key.One then
@@ -229,6 +239,8 @@ let () =
         edit_state.edit_mode <- edit_state.region_editor_mode
       else if is_key_pressed Key.Four then
         edit_state.edit_mode <- edit_state.ambient_selector_mode
+      else if is_key_pressed Key.Five then
+        edit_state.edit_mode <- edit_state.text_writer_mode
       else if (is_key_pressed Key.O) && (is_key_down Key.Left_control) then
         begin
           let opt_obj = get_static_obj () in

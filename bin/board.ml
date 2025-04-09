@@ -75,6 +75,12 @@ module Blueprint = struct
        see the cell boundaries. *)
   }
 
+  let get_width (bp : t) : int =
+    bp.width
+
+  let get_height (bp : t) : int =
+    bp.height
+
   let create_empty (width : int) (height : int) (empty_object_key : string) : t =
     let open Raylib in
     let board_width = width * Config.char_width in

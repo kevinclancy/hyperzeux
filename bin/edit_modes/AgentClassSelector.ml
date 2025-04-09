@@ -29,17 +29,47 @@ let update_gui (selector : t) : unit =
 let get_curr_color (selector : t) : Raylib.Color.t =
   !(selector.color)
 
-let set_obj (selector : t) (agent_class : agent_class) =
+let set_obj (selector : t) (agent_class : agent_class) : unit =
   selector.curr_class := agent_class;
   update_gui selector
 
-let next_obj (selector : t) =
+let next_obj (selector : t) : unit =
   selector.curr_class := (AgentClassMap.get_next_elem !(selector.curr_class));
   update_gui selector
 
-let prev_obj (selector : t) =
+let prev_obj (selector : t) : unit =
     selector.curr_class := (AgentClassMap.get_next_elem !(selector.curr_class));
     update_gui selector
+
+let handle_keypress (selector : t) : bool =
+  let open Raylib in
+  if is_key_pressed Key.Comma then
+    begin
+      next_obj selector;
+      true
+    end
+  else if is_key_pressed Key.Period then
+    begin
+      next_obj selector;
+      true
+    end
+  else
+    false
+
+let handle_keypress (selector : t) : bool =
+  let open Raylib in
+  if is_key_pressed Key.Comma then
+    begin
+      next_obj selector;
+      true
+    end
+  else if is_key_pressed Key.Period then
+    begin
+      next_obj selector;
+      true
+    end
+  else
+    false
 
 let draw (selector : t) =
   let open Raylib in

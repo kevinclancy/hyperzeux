@@ -100,7 +100,8 @@ let draw (selector : t) =
   selector.color :=
     Raygui.color_picker
       (Rectangle.create (boundary_left +. 17.0) (boundary_top +. 180.0) (Config.agent_selector_width -. 60.0) 80.0)
-      !(selector.color)
+      !(selector.color);
+  boundary
 
 let instantiate (selector : t) (bp : Board.Blueprint.t) (pos : position) : unit =
   match GuiTools.get_new_name "Enter new agent name" (Board.Blueprint.contains_agent_name bp) with

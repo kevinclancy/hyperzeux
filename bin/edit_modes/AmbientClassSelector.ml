@@ -41,10 +41,8 @@ let draw (selector : t) (bp : Board.Blueprint.t) =
   let open Raylib in
   let boundary_left = Config.screen_width_f -. ambient_selector_width -. ambient_selector_margin in
   let boundary_top = ambient_selector_margin in
-  begin
-    let boundary = Rectangle.create boundary_left boundary_top ambient_selector_width ambient_selector_height in
-    draw_rectangle_rec boundary Color.black;
-  end;
+  let boundary = Rectangle.create boundary_left boundary_top ambient_selector_width ambient_selector_height in
+  draw_rectangle_rec boundary Color.black;
   let ambient_names = Board.Blueprint.ambient_names bp in
   let selected_index, focused_index, scroll_index, ambient_list_bottom =
     let boundary = Rectangle.create
@@ -102,4 +100,4 @@ let draw (selector : t) (bp : Board.Blueprint.t) =
     begin
       ()
     end;
-  ()
+  boundary

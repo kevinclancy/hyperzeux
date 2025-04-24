@@ -136,14 +136,19 @@ let upper_assoc =
       (Key.Z, 122)
     ]
 
-let draw (text_writer : t) (bp : Board.Blueprint.t) (camera_pos : vec2) (scale : float) (mouse_pos : vec2) : unit =
+let draw (text_writer : t)
+         (bp : Board.Blueprint.t)
+         (camera_pos : vec2)
+         (scale : float)
+         (mouse_pos : vec2) : Raylib.Rectangle.t =
+
   let open Raylib in
   let boundary_left = Config.screen_width_f -. text_writer_width -. text_writer_margin in
   let boundary_top = text_writer_margin in
   let outer_boundary = Rectangle.create boundary_left boundary_top text_writer_width text_writer_height in
   draw_rectangle_rec outer_boundary Color.black;
 
-  match !text_writer with
+  begin match !text_writer with
   | Writing(pos) ->
     let romulus_font = FontMap.get "romulus.png" in
     let text_pos = vec2 (boundary_left +. 5.) (boundary_top +. 5.) in
@@ -155,6 +160,8 @@ let draw (text_writer : t) (bp : Board.Blueprint.t) (camera_pos : vec2) (scale :
     let romulus_font = FontMap.get "romulus.png" in
     let text_pos = vec2 (boundary_left +. 5.) (boundary_top +. 5.) in
     draw_text_ex romulus_font "Left-click a board cell to begin\nwriting text." text_pos 18.0 1.0 Color.white
+  end;
+  outer_boundary
 
 let click_left (text_writer : t) (bp : Board.Blueprint.t) (cursor_cell_pos : position)
                (camera_pos : vec2) (scale : float) : unit =

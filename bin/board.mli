@@ -21,6 +21,9 @@ module Blueprint : sig
     (** [set_static_object_key blueprint pos key color] Set position [pos] to static object key
         [key] and color [color] *)
 
+    val get_static_object_name : t -> position -> string
+    (** [get_static_object blueprint pos] Returns name of static object at position [pos] *)
+
     val add_agent : t -> string -> Raylib.Color.t -> string -> string -> position -> unit
     (** [add_agent blueprint agent_name color agent_class_name texture_name pos] *)
 
@@ -33,6 +36,9 @@ module Blueprint : sig
     val add_waypoint : t -> string -> position -> unit
     (** [add_waypoint blueprint waypoint_name waypoint_position]
         Adds a waypoint named [waypoint_name] at position [waypoint_position] *)
+
+    val contains_pos : t -> position -> bool
+    (** [contains_pos blueprint pos] Returns true iff [pos] is a valid cell position of [blueprint] *)
 
     val contains_waypoint_name : t -> string -> bool
     (** [contains_waypoint_name blueprint name] *)

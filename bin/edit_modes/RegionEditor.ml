@@ -63,7 +63,7 @@ let outer_boundary_top = margin
 
 let boundary = Raylib.Rectangle.create outer_boundary_left outer_boundary_top width height
 
-let draw_menu (region_editor_state : t) (menu_state : menu_state) (bp : Board.Blueprint.t) : unit =
+let draw_menu (region_editor_state : t) (menu_state : menu_state) (bp : Board.Blueprint.t) : Raylib.Rectangle.t =
   let open Raylib in
 
   let center_margin = 20. in
@@ -228,9 +228,12 @@ let draw_menu (region_editor_state : t) (menu_state : menu_state) (bp : Board.Bl
       ()
     end
   end;
-  ()
+  boundary
 
-let draw_top_left (region_editor : t) (region_name : string) (region : region) (component_name : string) : unit =
+let draw_top_left (region_editor : t)
+                  (region_name : string)
+                  (region : region)
+                  (component_name : string) : Raylib.Rectangle.t =
   (** Draw the region editor's state when choosing the top-left cell of a new component *)
   let open Raylib in
   draw_rectangle_rec boundary Color.black;
@@ -245,7 +248,8 @@ let draw_top_left (region_editor : t) (region_name : string) (region : region) (
   Raygui.set_style (Default `Text_color_normal) 0xFFFFFFFF;
   Raygui.label (Rectangle.create text_left text_top width 20.) (Printf.sprintf "Creating component %s for region %s" component_name region_name);
   Raygui.label (Rectangle.create text_left (text_top +. 25.) width 20.) "Choose the component's top-left board cell by clicking it";
-  Raygui.set_style (Default `Text_color_normal) old_text_color
+  Raygui.set_style (Default `Text_color_normal) old_text_color;
+  boundary
 
 
 (** TODO: we need to make the mouse position an argument here so that we can draw a prospective rectangle component as the hover the mouse around
@@ -257,7 +261,7 @@ let draw_bottom_right (region_editor : t)
                       (top_left_cell_pos : position)
                       (camera_pos : vec2)
                       (scale : float)
-                      (mouse_pos : vec2) : unit =
+                      (mouse_pos : vec2) : Raylib.Rectangle.t =
 
   (** Draw the region editor's state when choosing the bottom-right cell of a new component *)
   let open Raylib in
@@ -275,7 +279,7 @@ let draw_bottom_right (region_editor : t)
 
   Raylib.draw_circle_v component_top_left 5. (Color.create 200 100 100 100);
 
-  if (Vector2.x diagonal) > 0. && (Vector2.y diagonal) > 0. then
+  begin if (Vector2.x diagonal) > 0. && (Vector2.y diagonal) > 0. then
     let region_rect =
       Rectangle.create
         (Vector2.x component_top_left)
@@ -284,15 +288,16 @@ let draw_bottom_right (region_editor : t)
         (Vector2.y diagonal);
     in
     Raylib.draw_rectangle_rec region_rect (Color.create 20 100 100 100);
-
+  end;
   let old_text_color = Raygui.get_style (Default `Text_color_normal) in
   Raygui.set_style (Default `Text_size) 18;
   Raygui.set_style (Default `Text_color_normal) 0xFFFFFFFF;
   Raygui.label (Rectangle.create text_left text_top width 20.) (Printf.sprintf "Creating component %s for region %s" component_name region_name);
   Raygui.label (Rectangle.create text_left (text_top +. 25.) width 20.) "Choose the component's bottom-right board cell by clicking it";
-  Raygui.set_style (Default `Text_color_normal) old_text_color
+  Raygui.set_style (Default `Text_color_normal) old_text_color;
+  boundary
 
-let draw (region_editor : t) (bp : Board.Blueprint.t) (camera_pos : vec2) (scale : float) (mouse_pos : vec2) : unit =
+let draw (region_editor : t) (bp : Board.Blueprint.t) (camera_pos : vec2) (scale : float) (mouse_pos : vec2) : Raylib.Rectangle.t =
   match !region_editor with
   | MenuActive(menu_state) ->
     draw_menu region_editor menu_state bp

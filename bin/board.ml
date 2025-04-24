@@ -133,6 +133,9 @@ module Blueprint = struct
       draw_texture_ex texture (Vector2.create x y) 0.0 1.0 color;
     end_texture_mode ()
 
+  let get_static_object_name (bp : t) (pos : position) : string =
+    !(get_static_object_ref bp pos).name
+
   let remove_agent_at (bp : t) (pos : position) : unit =
     bp.agents <- StringMap.filter (fun _ agent_bp -> agent_bp.pos <> pos) bp.agents
 
@@ -152,6 +155,9 @@ module Blueprint = struct
   let remove_ambient_agent (bp : t) (agent_name : string) : unit =
     assert (StringMap.mem agent_name bp.ambient_agents);
     bp.ambient_agents <- StringMap.remove agent_name bp.ambient_agents
+
+  let contains_pos (bp : t) (pos : position) : bool =
+    pos.x >= 0 && pos.x < bp.width && pos.y >= 0 && pos.y < bp.height
 
   let contains_waypoint_name (bp : t) (waypoint_name : string) : bool =
     StringMap.mem waypoint_name bp.waypoints

@@ -1,5 +1,6 @@
 module IntMap = Map.Make(Int)
 module StringMap = Map.Make(String)
+module StringSet = Set.Make(String)
 
 type static_object = {
   (* The texture that depicts this object type *)

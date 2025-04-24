@@ -18,6 +18,7 @@ type selector_name =
   | RegionEditor
   | AmbientAgentList
   | TextWriter
+  | LineDrawer
 
 type editor_mode = {
   (** A selector for the current type of object we are placing in the
@@ -26,11 +27,13 @@ type editor_mode = {
   name : selector_name ;
   (** The name of the current selector *)
 
-  draw : Board.Blueprint.t -> vec2 -> float -> vec2 -> unit ;
+  draw : Board.Blueprint.t -> vec2 -> float -> vec2 -> Raylib.Rectangle.t ;
   (** [draw bp camera_pos scale mouse_pos] Draws the current selector with [bp] the currently opened blueprint,
       where [camera_pos] is the camera position of the top-left corner of the viewport relative to the
       top-left corner of the board, [scale] is the scaling factor to display the board, and [mouse_pos] is
       the view position of the mouse
+
+      Returns the window-space rectangle that the editor GUI appears within.
   *)
 
   handle_keypress : Board.Blueprint.t -> bool ;
@@ -64,6 +67,9 @@ type edit_state = {
   region_editor : RegionEditor.t ;
   region_editor_mode : editor_mode ;
 
+  line_drawer : LineDrawer.t ;
+  line_drawer_mode : editor_mode ;
+
   ambient_selector_mode : editor_mode ;
 
   text_writer_mode : editor_mode
@@ -96,6 +102,7 @@ let create_edit_state (bp : Board.Blueprint.t) : edit_state =
   let region_editor = RegionEditor.create () in
   let ambient_selector = AmbientClassSelector.create () in
   let text_writer = TextWriter.create () in
+  let line_drawer = LineDrawer.create () in
 
   (** Begin using the static object selector *)
   let object_selector_mode : editor_mode =
@@ -156,6 +163,17 @@ let create_edit_state (bp : Board.Blueprint.t) : edit_state =
       mouse_released_left = (fun _ _ -> ())
     }
   in
+  let line_drawer_mode : editor_mode =
+    let open LineDrawer in
+    {
+      name = LineDrawer ;
+      draw = (fun bp _ _ _ -> draw line_drawer bp) ;
+      handle_keypress = (fun _ -> false) ;
+      mouse_click_left = (fun _ _ _ _ -> ()) ;
+      mouse_down_left = (fun bp pos -> instantiate line_drawer bp pos) ;
+      mouse_released_left = (fun _ _ -> ())
+    }
+  in
   {
     blueprint = bp ;
     camera_pos = Vector2.create 0.0 0.0 ;
@@ -172,6 +190,9 @@ let create_edit_state (bp : Board.Blueprint.t) : edit_state =
 
     region_editor ;
     region_editor_mode ;
+
+    line_drawer ;
+    line_drawer_mode ;
 
     text_writer_mode
   }
@@ -241,6 +262,8 @@ let () =
         edit_state.edit_mode <- edit_state.ambient_selector_mode
       else if is_key_pressed Key.Five then
         edit_state.edit_mode <- edit_state.text_writer_mode
+      else if is_key_pressed Key.Six then
+        edit_state.edit_mode <- edit_state.line_drawer_mode
       else if (is_key_pressed Key.O) && (is_key_down Key.Left_control) then
         begin
           let opt_obj = get_static_obj () in
@@ -278,32 +301,38 @@ let () =
         end;
 
       let mouse_pos = Raylib.get_mouse_position () in
-      let mouse_cell_x = Int.of_float @@ ((Vector2.x mouse_pos) +. (Vector2.x camera_pos)) /. (!scale *. (Float.of_int @@ Config.char_width)) in
-      let mouse_cell_y = Int.of_float @@ ((Vector2.y mouse_pos) +. (Vector2.y camera_pos)) /. (!scale *. (Float.of_int @@ Config.char_height)) in
-
-      let contained_in_board (x : int) (y : int) =
-        x >= 0 && y >= 0 && x < Config.board_cells_width && y < Config.board_cells_height
-      in
-
-      if Raylib.is_mouse_button_pressed MouseButton.Left && contained_in_board mouse_cell_x mouse_cell_y then
-          edit_mode.mouse_click_left blueprint {x = mouse_cell_x ; y = mouse_cell_y} camera_pos !scale;
-
-      if Raylib.is_mouse_button_down MouseButton.Left && contained_in_board mouse_cell_x mouse_cell_y then
-        edit_mode.mouse_down_left blueprint {x = mouse_cell_x ; y = mouse_cell_y};
-
       Board.Blueprint.draw_prep blueprint;
         (* (region_editor : t) (bp : Board.Blueprint.t) (cursor_cell_pos : position) (camera_pos : vec2) (scale : float) *)
       begin_drawing ();
-        Board.Blueprint.draw blueprint camera_pos !scale;
+      Board.Blueprint.draw blueprint camera_pos !scale;
         (* let curr_obj_texture = TextureMap.get curr_object.texture_name in *)
-        edit_mode.draw blueprint camera_pos !scale mouse_pos;
+      let edit_rect = edit_mode.draw blueprint camera_pos !scale mouse_pos in
         (* draw_texture_ex
           curr_obj_texture
           (Vector2.create Config.(Float.of_int @@ screen_width - char_width - 50) 50.0)
           0.0
           1.0
           Color.white; *)
-      end_drawing ()
+      end_drawing ();
+
+      if not (((Vector2.x mouse_pos) >= Rectangle.x edit_rect)
+             && ((Vector2.y mouse_pos) >= Rectangle.y edit_rect)
+             && ((Vector2.x mouse_pos) <= (Rectangle.x edit_rect) +. (Rectangle.width edit_rect))
+             && ((Vector2.y mouse_pos) <= (Rectangle.y edit_rect) +. (Rectangle.height edit_rect))) then
+        begin
+          let mouse_cell_x = Int.of_float @@ ((Vector2.x mouse_pos) +. (Vector2.x camera_pos)) /. (!scale *. (Float.of_int @@ Config.char_width)) in
+          let mouse_cell_y = Int.of_float @@ ((Vector2.y mouse_pos) +. (Vector2.y camera_pos)) /. (!scale *. (Float.of_int @@ Config.char_height)) in
+
+          let contained_in_board (x : int) (y : int) =
+            x >= 0 && y >= 0 && x < Config.board_cells_width && y < Config.board_cells_height
+          in
+
+          if Raylib.is_mouse_button_pressed MouseButton.Left && contained_in_board mouse_cell_x mouse_cell_y then
+            edit_mode.mouse_click_left blueprint {x = mouse_cell_x ; y = mouse_cell_y} camera_pos !scale;
+
+          if Raylib.is_mouse_button_down MouseButton.Left && contained_in_board mouse_cell_x mouse_cell_y then
+            edit_mode.mouse_down_left blueprint {x = mouse_cell_x ; y = mouse_cell_y};
+        end
   done;
 
   Raylib.close_window ();

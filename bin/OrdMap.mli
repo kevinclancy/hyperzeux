@@ -23,6 +23,9 @@ module type OrdMap = sig
 
       Precondition: map contains an element with name [name] *)
 
+  val get_all_names : unit -> string list
+  (** Return names of all elements *)
+
   val get_first_elem : unit -> a
   (** [get_first_elem ()] Gets the first element that was added to the map.
 

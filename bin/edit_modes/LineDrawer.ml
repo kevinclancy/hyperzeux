@@ -38,7 +38,7 @@ let select_index (line_drawer : t) (ind : int) : unit =
   let selected_bundle = LineBundleMap.get (List.nth line_drawer.line_type_names ind) in
   line_drawer.curr_bundle <- selected_bundle
 
-let draw (line_drawer : t) (bp : Board.Blueprint.t) : Raylib.Rectangle.t =
+let draw (line_drawer : t) (edit_state : Board.Blueprint.edit_state) : Raylib.Rectangle.t =
   let open Raylib in
   let boundary_left = Config.screen_width_f -. list_drawer_width -. list_drawer_margin in
   let boundary_top = list_drawer_margin in
@@ -79,10 +79,10 @@ let draw (line_drawer : t) (bp : Board.Blueprint.t) : Raylib.Rectangle.t =
   line_drawer.color <- Raygui.color_picker line_drawer_boundary line_drawer.color ;
   boundary
 
-let update_line_at (line_drawer : t) (bp : Board.Blueprint.t) (pos : position) : unit =
-  let is_line_at (pos : position) : bool =
-    if Board.Blueprint.contains_pos bp pos then
-      StringSet.mem (Board.Blueprint.get_static_object_name bp pos) line_drawer.bundle_piece_names
+let update_line_at (line_drawer : t) (edit_state : Board.Blueprint.edit_state) (pos : pre_position) : unit =
+  let is_line_at (pos : pre_position) : bool =
+    if Board.Blueprint.contains_pos edit_state pos then
+      StringSet.mem (Board.Blueprint.get_static_object_name edit_state pos) line_drawer.bundle_piece_names
     else
       false
   in
@@ -112,25 +112,25 @@ let update_line_at (line_drawer : t) (bp : Board.Blueprint.t) (pos : position) :
   let obj_name =
     Printf.sprintf "%s_%s" line_drawer.curr_bundle.name line_type
   in
-  Board.Blueprint.set_static_object bp pos obj_name line_drawer.color
+  Board.Blueprint.set_static_object edit_state pos obj_name line_drawer.color
 
 
-let instantiate (line_drawer : t) (bp : Board.Blueprint.t) (pos : position) : unit =
-  let is_line_at (pos : position) : bool =
-    if Board.Blueprint.contains_pos bp pos then
-      StringSet.mem (Board.Blueprint.get_static_object_name bp pos) line_drawer.bundle_piece_names
+let instantiate (line_drawer : t) (edit_state : Board.Blueprint.edit_state) (pos : pre_position) : unit =
+  let is_line_at (pos : pre_position) : bool =
+    if Board.Blueprint.contains_pos edit_state pos then
+      StringSet.mem (Board.Blueprint.get_static_object_name edit_state pos) line_drawer.bundle_piece_names
     else
       false
   in
-  update_line_at line_drawer bp pos;
+  update_line_at line_drawer edit_state pos;
   if is_line_at { pos with y = pos.y - 1 } then
-    update_line_at line_drawer bp { pos with y = pos.y - 1 };
+    update_line_at line_drawer edit_state { pos with y = pos.y - 1 };
   if is_line_at { pos with y = pos.y + 1 } then
-    update_line_at line_drawer bp { pos with y = pos.y + 1 };
+    update_line_at line_drawer edit_state { pos with y = pos.y + 1 };
   if is_line_at { pos with x = pos.x - 1 } then
-    update_line_at line_drawer bp { pos with x = pos.x - 1 };
+    update_line_at line_drawer edit_state { pos with x = pos.x - 1 };
   if is_line_at { pos with x = pos.x + 1 } then
-    update_line_at line_drawer bp { pos with x = pos.x + 1 };
+    update_line_at line_drawer edit_state { pos with x = pos.x + 1 };
 
     (*
   let is_line_n = is_line_at { cursor_cell_pos with y = cursor_cell_pos.y - 1 } in

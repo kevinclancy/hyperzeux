@@ -75,6 +75,6 @@ let draw (selector : t) =
       !(selector.color);
   boundary
 
-let instantiate (selector : t) (bp : Board.Blueprint.t) (pos : position) : unit =
+let instantiate (selector : t) (edit_state : Board.Blueprint.edit_state) (pos : pre_position) : unit =
   let curr_object = !(selector.curr_object) in
-  Board.Blueprint.set_static_object bp pos curr_object.name !(selector.color)
+  Board.Blueprint.set_static_object edit_state pos curr_object.name !(selector.color)

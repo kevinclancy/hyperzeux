@@ -27,7 +27,7 @@ type editor_mode = {
   name : selector_name ;
   (** The name of the current selector *)
 
-  draw : Board.Blueprint.t -> vec2 -> float -> vec2 -> Raylib.Rectangle.t ;
+  draw : Board.Blueprint.edit_state -> vec2 -> float -> vec2 -> Raylib.Rectangle.t ;
   (** [draw bp camera_pos scale mouse_pos] Draws the current selector with [bp] the currently opened blueprint,
       where [camera_pos] is the camera position of the top-left corner of the viewport relative to the
       top-left corner of the board, [scale] is the scaling factor to display the board, and [mouse_pos] is
@@ -36,24 +36,24 @@ type editor_mode = {
       Returns the window-space rectangle that the editor GUI appears within.
   *)
 
-  handle_keypress : Board.Blueprint.t -> bool ;
+  handle_keypress : Board.Blueprint.edit_state -> bool ;
   (** Handle any relevant pending keypresses, returning true if some keypress
     was handled and false otherwise *)
 
-  mouse_click_left : Board.Blueprint.t -> position -> vec2 -> float -> unit ;
+  mouse_click_left : Board.Blueprint.edit_state -> pre_position -> vec2 -> float -> unit ;
   (** [mouse_click_left bp cursor_cell_pos camera_pos scale] The left mouse button is clicked with the cursor over the given board position *)
 
-  mouse_down_left : Board.Blueprint.t -> position -> unit ;
+  mouse_down_left : Board.Blueprint.edit_state -> pre_position -> unit ;
   (** The left mouse button is being held down over the given board position *)
 
-  mouse_released_left : Board.Blueprint.t -> position -> unit
+  mouse_released_left : Board.Blueprint.edit_state -> position -> unit
   (** The left mouse button was released with the cursor over the given board position *)
 }
 
 (* (region_editor : t) (bp : Board.Blueprint.t) (cursor_cell_pos : position) (camera_pos : vec2) (scale : float) *)
 
 type edit_state = {
-  blueprint : Board.Blueprint.t ;
+  bp_edit_state : Board.Blueprint.edit_state ;
   mutable camera_pos : Vector2.t ;
   scale : float ref ;
   mutable edit_mode : editor_mode ;
@@ -96,7 +96,7 @@ let get_agent_class () : agent_class option =
     ~get_texture:(fun (c : agent_class) ->
       TextureMap.get c.preview_texture_name)
 
-let create_edit_state (bp : Board.Blueprint.t) : edit_state =
+let create_edit_state (bp_edit_state : Board.Blueprint.edit_state) : edit_state =
   let object_selector = ObjectSelector.create () in
   let agent_selector = AgentClassSelector.create () in
   let region_editor = RegionEditor.create () in
@@ -123,7 +123,7 @@ let create_edit_state (bp : Board.Blueprint.t) : edit_state =
       name = AgentSelector ;
       draw = (fun _ _ _ _ -> draw agent_selector) ;
       handle_keypress = (fun _ -> handle_keypress agent_selector) ;
-      mouse_click_left = (fun bp cell_pos _ _ -> instantiate agent_selector bp cell_pos) ;
+      mouse_click_left = (fun edit_state cell_pos _ _ -> instantiate agent_selector edit_state cell_pos) ;
       mouse_down_left = (fun _ _ -> ()) ;
       mouse_released_left = (fun _ _ -> ())
     }
@@ -133,21 +133,20 @@ let create_edit_state (bp : Board.Blueprint.t) : edit_state =
     let open AmbientClassSelector in
     {
       name = AmbientAgentList ;
-      draw = (fun bp _ _ _ -> draw ambient_selector bp) ;
+      draw = (fun edit_state _ _ _ -> draw ambient_selector edit_state) ;
       handle_keypress = (fun _ -> false) ;
       mouse_click_left = (fun _ _ _ _ -> ()) ;
       mouse_down_left = (fun _ _ -> ()) ;
       mouse_released_left = (fun _ _ -> ())
     }
   in
-
   let region_editor_mode : editor_mode =
     let open RegionEditor in
     {
       name = RegionEditor ;
-      draw = (fun bp camera_pos scale mouse_pos -> draw region_editor bp camera_pos scale mouse_pos) ;
+      draw = (fun edit_state camera_pos scale mouse_pos -> draw region_editor edit_state camera_pos scale mouse_pos) ;
       handle_keypress = (fun _ -> false) ;
-      mouse_click_left = (fun bp cell_pos camera_pos scale-> click_left region_editor bp cell_pos camera_pos scale) ;
+      mouse_click_left = (fun edit_state cell_pos camera_pos scale-> click_left region_editor edit_state cell_pos camera_pos scale) ;
       mouse_down_left = (fun _ _ -> ()) ;
       mouse_released_left = (fun _ _ -> ())
     }
@@ -156,9 +155,9 @@ let create_edit_state (bp : Board.Blueprint.t) : edit_state =
     let open TextWriter in
     {
       name = TextWriter ;
-      draw = (fun bp camera_pos scale mouse_pos -> draw text_writer bp camera_pos scale mouse_pos) ;
-      handle_keypress = (fun bp -> handle_keypress text_writer bp) ;
-      mouse_click_left = (fun bp cursor_cell_pos camera_pos scale -> click_left text_writer bp cursor_cell_pos camera_pos scale) ;
+      draw = (fun edit_state camera_pos scale mouse_pos -> draw text_writer edit_state camera_pos scale mouse_pos) ;
+      handle_keypress = (fun edit_state -> handle_keypress text_writer edit_state) ;
+      mouse_click_left = (fun edit_state cursor_cell_pos camera_pos scale -> click_left text_writer edit_state cursor_cell_pos camera_pos scale) ;
       mouse_down_left = (fun _ _ -> ()) ;
       mouse_released_left = (fun _ _ -> ())
     }
@@ -167,7 +166,7 @@ let create_edit_state (bp : Board.Blueprint.t) : edit_state =
     let open LineDrawer in
     {
       name = LineDrawer ;
-      draw = (fun bp _ _ _ -> draw line_drawer bp) ;
+      draw = (fun edit_state _ _ _ -> draw line_drawer edit_state) ;
       handle_keypress = (fun _ -> false) ;
       mouse_click_left = (fun _ _ _ _ -> ()) ;
       mouse_down_left = (fun bp pos -> instantiate line_drawer bp pos) ;
@@ -175,7 +174,7 @@ let create_edit_state (bp : Board.Blueprint.t) : edit_state =
     }
   in
   {
-    blueprint = bp ;
+    bp_edit_state ;
     camera_pos = Vector2.create 0.0 0.0 ;
     scale = ref 1.0 ;
     edit_mode = object_selector_mode ;
@@ -209,8 +208,8 @@ let () =
   let song = Raylib.load_music_stream "music/song3.mp3" in
   (* Raylib.play_music_stream song; *)
 
-  let init_bp = Board.Blueprint.create_empty board_cells_width board_cells_height "empty" in
-  let game_state = ref @@ Editing (create_edit_state init_bp) in
+  let bp_edit_state = Board.Blueprint.create_initial_state Config.board_cells_width Config.board_cells_height "empty" in
+  let game_state = ref @@ Editing (create_edit_state bp_edit_state) in
   let save_board (bp : Board.Blueprint.t) : unit =
     let opt_filename = GuiTools.get_input_string "Enter filename to save board to" in
     match opt_filename with
@@ -224,7 +223,9 @@ let () =
     match opt_filename with
     | Some(filename) ->
       let bp = Board.Blueprint.deserialize filename in
-      game_state := Editing (create_edit_state bp)
+      let edit_state = Board.Blueprint.bp_to_edit_state bp in
+      Board.Blueprint.draw_prep edit_state;
+      game_state := Editing (create_edit_state edit_state)
     | None ->
       ()
   in
@@ -237,7 +238,7 @@ let () =
       begin_drawing ();
         Board.draw b;
       end_drawing ();
-    | Editing ({ blueprint ; camera_pos ; scale ; edit_mode } as edit_state) ->
+    | Editing ({ bp_edit_state ; camera_pos ; scale ; edit_mode } as edit_state) ->
       let dt = Raylib.get_frame_time () in
       let mouse_delta = Raylib.get_mouse_delta () in
       if is_mouse_button_down MouseButton.Right then
@@ -248,10 +249,10 @@ let () =
       let wheel_delta = Raylib.get_mouse_wheel_move () in
       scale := !scale +. (Config.editor_zoom_speed *. wheel_delta *. dt);
 
-      if edit_mode.handle_keypress blueprint then
+      if edit_mode.handle_keypress bp_edit_state then
         ()
       else if is_key_down Key.Left_control && is_key_pressed Key.P then
-        game_state := Playing (Board.create_from_blueprint blueprint)
+        game_state := Playing (Board.create_from_blueprint @@ Board.Blueprint.get_blueprint bp_edit_state)
       else if is_key_pressed Key.One then
         edit_state.edit_mode <- edit_state.object_selector_mode
       else if is_key_pressed Key.Two then
@@ -285,28 +286,28 @@ let () =
             ()
         end
       else if (is_key_pressed Key.S) && (is_key_down Key.Left_alt) then
-        save_board blueprint
+        save_board (Board.Blueprint.get_blueprint bp_edit_state)
       else if (is_key_pressed Key.O) && (is_key_down Key.Left_alt) then
         load_board ()
       else if (is_key_pressed Key.W) then
         begin
-        let {x;y} = get_mouse_boardpos camera_pos !scale in
+        let {x;y} : pre_position = get_mouse_boardpos camera_pos !scale in
         if x >= 0 && y >= 0 && x < Config.board_cells_width && y < Config.board_cells_height then
-          let opt_name = GuiTools.get_new_name "Enter new waypoint name" (Board.Blueprint.contains_waypoint_name blueprint) in
+          let opt_name = GuiTools.get_new_name "Enter new waypoint name" (Board.Blueprint.contains_waypoint_name bp_edit_state) in
           match opt_name with
           | Some(name) ->
-              Board.Blueprint.add_waypoint blueprint name {x;y};
+              Board.Blueprint.add_waypoint bp_edit_state name {x;y};
           | None ->
             ()
         end;
 
       let mouse_pos = Raylib.get_mouse_position () in
-      Board.Blueprint.draw_prep blueprint;
+      Board.Blueprint.draw_prep bp_edit_state;
         (* (region_editor : t) (bp : Board.Blueprint.t) (cursor_cell_pos : position) (camera_pos : vec2) (scale : float) *)
       begin_drawing ();
-      Board.Blueprint.draw blueprint camera_pos !scale;
+      Board.Blueprint.draw bp_edit_state camera_pos !scale;
         (* let curr_obj_texture = TextureMap.get curr_object.texture_name in *)
-      let edit_rect = edit_mode.draw blueprint camera_pos !scale mouse_pos in
+      let edit_rect = edit_mode.draw bp_edit_state camera_pos !scale mouse_pos in
         (* draw_texture_ex
           curr_obj_texture
           (Vector2.create Config.(Float.of_int @@ screen_width - char_width - 50) 50.0)
@@ -328,10 +329,10 @@ let () =
           in
 
           if Raylib.is_mouse_button_pressed MouseButton.Left && contained_in_board mouse_cell_x mouse_cell_y then
-            edit_mode.mouse_click_left blueprint {x = mouse_cell_x ; y = mouse_cell_y} camera_pos !scale;
+            edit_mode.mouse_click_left bp_edit_state {x = mouse_cell_x ; y = mouse_cell_y} camera_pos !scale;
 
           if Raylib.is_mouse_button_down MouseButton.Left && contained_in_board mouse_cell_x mouse_cell_y then
-            edit_mode.mouse_down_left blueprint {x = mouse_cell_x ; y = mouse_cell_y};
+            edit_mode.mouse_down_left bp_edit_state {x = mouse_cell_x ; y = mouse_cell_y};
         end
   done;
 

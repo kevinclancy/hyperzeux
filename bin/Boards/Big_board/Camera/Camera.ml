@@ -29,13 +29,13 @@ let state_following_player : camera_fields CameraAgentState.blueprint = {
         done
       );
 
-      get_position = (fun (fields : camera_fields) -> fields.pos);
-      get_scale = (fun (fields : camera_fields) -> fields.scale)
-  } ;
+      get_viewports = (fun (fields : camera_fields) ->
+        [({ layer = "main" ; pos = fields.pos ; scale = fields.scale })]) ;
+  };
 
   props = {
-    name = "FolowingPlayer"
-  }
+    name = "FolowingPlayer";
+  };
 }
 
 let camera : CameraAgent.camera_agent_class = {

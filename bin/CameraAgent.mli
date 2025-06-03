@@ -20,9 +20,9 @@ val create : board_interface ->
              t
 (** [create board agent_blueprint] Creates an agent *)
 
-val get_pos : t -> vec2
-
-val get_scale : t -> float
+val get_viewports : t -> camera_transform list
+(** Gets a list of camera transforms to use for each layer that we're currently displaying
+    Layers are listed from back to front, e.g. a GUI layer should be listed last *)
 
 val name : t -> string
 (** The name of the ambient agent *)

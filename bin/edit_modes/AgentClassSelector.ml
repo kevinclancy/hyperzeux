@@ -103,11 +103,11 @@ let draw (selector : t) =
       !(selector.color);
   boundary
 
-let instantiate (selector : t) (bp : Board.Blueprint.t) (pos : position) : unit =
-  match GuiTools.get_new_name "Enter new agent name" (Board.Blueprint.contains_agent_name bp) with
+let instantiate (selector : t) (edit_state : Board.Blueprint.edit_state) (pos : pre_position) : unit =
+  match GuiTools.get_new_name "Enter new agent name" (Board.Blueprint.contains_agent_name edit_state) with
   | Some(name) ->
     Board.Blueprint.add_agent
-      bp
+      edit_state
       name
       !(selector.color)
       !(selector.curr_class).name

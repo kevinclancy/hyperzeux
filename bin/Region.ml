@@ -3,6 +3,9 @@ open Common
 type region_component = {
   (** A rectangular subsection of a region *)
 
+    layer : string ;
+    (** Name of layer this component is inside *)
+
     top  :  int ;
     (** The row index of the top cell of the rectangle *)
 

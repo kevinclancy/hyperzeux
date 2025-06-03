@@ -15,11 +15,9 @@ type 's state_functions = {
 
   create_handlers : ('s -> ((t option, board_interface) Channel.t_in_handler) list) option ;
 
-  get_position : 's -> Raylib.Vector2.t ;
-  (** Return the pixel-space position of the camera relative to the top-left of the board *)
-
-  get_scale : 's -> float ;
-  (** Returns the scale of the camera *)
+  get_viewports : 's -> camera_transform list ;
+  (** Pairs each layer name to the pixel-space position and scale of the camera relative to the top-left of the board
+      Layers are listed from back to front, e.g. a GUI layer should be listed last *)
 
   assert_invariants : (board_interface -> 's -> unit) option ;
   (** Function to call to assert state invariants. None means there are no assertable invariants. *)
@@ -65,8 +63,7 @@ and t = {
   name : string ;
   handlers : channel_handler list ;
   mutable script_state : script_state ;
-  get_position : unit -> vec2 ;
-  get_scale : unit -> float ;
+  get_viewports : unit -> camera_transform list ;
   t_delta_seconds : float ref;
   key_left_pressed : board_interface -> t option ;
   key_right_pressed : board_interface -> t option ;
@@ -103,8 +100,7 @@ type 's blueprint = {
 let empty_state_functions = {
   script = None ;
   create_handlers = None ;
-  get_position = (function _ -> vec2 0. 0.) ;
-  get_scale = (function _ -> 1.);
+  get_viewports = (function _ -> []) ;
   assert_invariants = None ;
   key_left_pressed = None ;
   key_up_pressed = None ;
@@ -136,10 +132,8 @@ let create (bp : 's blueprint) (priv_data : 's) : t =
         | None ->
           Idling
         end;
-      get_position =
-        (fun () -> state_functions.get_position priv_data);
-      get_scale =
-        (fun () -> state_functions.get_scale priv_data);
+      get_viewports =
+        (fun () -> state_functions.get_viewports priv_data);
       t_delta_seconds = ref 0.;
       key_left_pressed =
         begin match state_functions.key_left_pressed with
@@ -223,11 +217,8 @@ let create (bp : 's blueprint) (priv_data : 's) : t =
 let name (state : t) : string =
   state.name
 
-let get_pos (state : t) : vec2 =
-  state.get_position ()
-
-let get_scale (state : t) : float =
-  state.get_scale ()
+let get_viewports (state : t) : camera_transform list =
+  state.get_viewports ()
 
 let resume (state : t) (board : board_interface) (t_delta_seconds : float) : unit =
   let open Effect.Deep in

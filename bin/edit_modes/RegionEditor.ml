@@ -33,7 +33,7 @@ type region_editor_state =
   (** ComponentTopLeft(region, region_name, component_name) means we are adding a component (rectangle) named [component_name] to [region],
       and we are locating the top left corner of the new component by asking the user to click on a board cell.  *)
 
-  | ComponentBottomRight of region * string * string * position
+  | ComponentBottomRight of region * string * string * pre_position
   (** ComponentBottomRight(region, region_name, component_name, top_left_pos) means we are adding a component (rectangle) named [component_name] to [region],
       and, having already chosen the position [top_left_pos] of its top left corner, we are now choosing the location of the bottom right corner
       of the new component by asking the user to click on a board cell.  *)
@@ -63,7 +63,7 @@ let outer_boundary_top = margin
 
 let boundary = Raylib.Rectangle.create outer_boundary_left outer_boundary_top width height
 
-let draw_menu (region_editor_state : t) (menu_state : menu_state) (bp : Board.Blueprint.t) : Raylib.Rectangle.t =
+let draw_menu (region_editor_state : t) (menu_state : menu_state) (edit_state : Board.Blueprint.edit_state) : Raylib.Rectangle.t =
   let open Raylib in
 
   let center_margin = 20. in
@@ -89,7 +89,7 @@ let draw_menu (region_editor_state : t) (menu_state : menu_state) (bp : Board.Bl
     left
   in
 
-  let region_names = Board.Blueprint.region_names bp in
+  let region_names = Board.Blueprint.region_names edit_state in
 
   (* Draw region list *)
   let region_list_top, region_list_bottom, region_list_width, region_list_height, selected_region =
@@ -113,7 +113,7 @@ let draw_menu (region_editor_state : t) (menu_state : menu_state) (bp : Board.Bl
         None
       | n ->
         let selected_region_name = List.nth region_names selected_index in
-        let region = Board.Blueprint.region bp selected_region_name in
+        let region = Board.Blueprint.get_region edit_state selected_region_name in
         Some(selected_region_name, region)
     in
     menu_state.region_list_scroll_index <- scroll_index;
@@ -144,9 +144,9 @@ let draw_menu (region_editor_state : t) (menu_state : menu_state) (bp : Board.Bl
     begin
       match GuiTools.get_new_name "Enter new region name" (fun name -> (List.mem name region_names)) with
       | Some(new_region_name) ->
-        Board.Blueprint.add_region bp new_region_name { description = "" ; components = StringMap.empty };
+        Board.Blueprint.add_region edit_state new_region_name { description = "" ; components = StringMap.empty };
         menu_state.selected_region_index <-
-          Option.get (List.find_index ((=) new_region_name) (Board.Blueprint.region_names bp))
+          Option.get (List.find_index ((=) new_region_name) (Board.Blueprint.region_names edit_state))
       | None ->
         ()
     end;
@@ -255,10 +255,11 @@ let draw_top_left (region_editor : t)
 (** TODO: we need to make the mouse position an argument here so that we can draw a prospective rectangle component as the hover the mouse around
           or we could just get it from the raylib API *)
 let draw_bottom_right (region_editor : t)
+                      (edit_state : Board.Blueprint.edit_state)
                       (region_name : string)
                       (region : region)
                       (component_name : string)
-                      (top_left_cell_pos : position)
+                      (top_left_cell_pos : pre_position)
                       (camera_pos : vec2)
                       (scale : float)
                       (mouse_pos : vec2) : Raylib.Rectangle.t =
@@ -297,26 +298,27 @@ let draw_bottom_right (region_editor : t)
   Raygui.set_style (Default `Text_color_normal) old_text_color;
   boundary
 
-let draw (region_editor : t) (bp : Board.Blueprint.t) (camera_pos : vec2) (scale : float) (mouse_pos : vec2) : Raylib.Rectangle.t =
+let draw (region_editor : t) (edit_state : Board.Blueprint.edit_state) (camera_pos : vec2) (scale : float) (mouse_pos : vec2) : Raylib.Rectangle.t =
   match !region_editor with
   | MenuActive(menu_state) ->
-    draw_menu region_editor menu_state bp
+    draw_menu region_editor menu_state edit_state
   | ComponentTopLeft(region, region_name, component_name) ->
     draw_top_left region_editor region_name region component_name
   | ComponentBottomRight(region, region_name, component_name, top_left_cell_pos) ->
-    draw_bottom_right region_editor region_name region component_name top_left_cell_pos camera_pos scale mouse_pos
+    draw_bottom_right region_editor edit_state region_name region component_name top_left_cell_pos camera_pos scale mouse_pos
 
-let click_left (region_editor : t) (bp : Board.Blueprint.t) (cursor_cell_pos : position) (camera_pos : vec2) (scale : float) =
+let click_left (region_editor : t) (edit_state : Board.Blueprint.edit_state) (cursor_cell_pos : pre_position) (camera_pos : vec2) (scale : float) =
   match !region_editor with
   | MenuActive(_) ->
     ()
   | ComponentTopLeft(region, region_name, component_name) ->
     region_editor := ComponentBottomRight(region, region_name, component_name, cursor_cell_pos);
   | ComponentBottomRight(region, region_name, component_name, top_left_pos) ->
-    let {x = cursor_x ; y = cursor_y} = cursor_cell_pos in
-    let {x = top_left_x ; y = top_left_y } = top_left_pos in
+    let {x = cursor_x ; y = cursor_y} : pre_position = cursor_cell_pos in
+    let {x = top_left_x ; y = top_left_y} : pre_position = top_left_pos in
     if top_left_x <= cursor_x && top_left_y <= cursor_y then
       let open Board in
-      let new_component = { left = top_left_x ; top = top_left_y ; right = cursor_x ; bottom = cursor_y } in
+      let layer = Board.Blueprint.get_current_layer_name edit_state in
+      let new_component = { layer ; left = top_left_x ; top = top_left_y ; right = cursor_x ; bottom = cursor_y } in
       region.components <- StringMap.add component_name new_component region.components;
       region_editor := initial_menu_state

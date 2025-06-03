@@ -37,13 +37,13 @@ let create () : t =
     scroll_index = -1
   }
 
-let draw (selector : t) (bp : Board.Blueprint.t) =
+let draw (selector : t) (edit_state : Board.Blueprint.edit_state) =
   let open Raylib in
   let boundary_left = Config.screen_width_f -. ambient_selector_width -. ambient_selector_margin in
   let boundary_top = ambient_selector_margin in
   let boundary = Rectangle.create boundary_left boundary_top ambient_selector_width ambient_selector_height in
   draw_rectangle_rec boundary Color.black;
-  let ambient_names = Board.Blueprint.ambient_names bp in
+  let ambient_names = Board.Blueprint.ambient_names edit_state in
   let selected_index, focused_index, scroll_index, ambient_list_bottom =
     let boundary = Rectangle.create
       (boundary_left +. ambient_selector_margin)
@@ -80,7 +80,7 @@ let draw (selector : t) (bp : Board.Blueprint.t) =
     begin
       match GuiTools.get_item AmbientAgentClassMap.search (fun amb -> amb.name) with
       | Some(ambient_class) ->
-        Board.Blueprint.add_ambient_agent bp ambient_class.name ambient_class.name
+        Board.Blueprint.add_ambient_agent edit_state ambient_class.name ambient_class.name
       | None ->
         ()
     end;

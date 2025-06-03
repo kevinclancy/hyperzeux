@@ -2,7 +2,7 @@
 open Common
 
 type text_writer_state =
-  | Writing of position
+  | Writing of pre_position
   (** User is typing text, where [pos] is the cell location of the next character to type *)
   | Locating
   (** Waiting for user to choose a cell to type in *)
@@ -137,7 +137,7 @@ let upper_assoc =
     ]
 
 let draw (text_writer : t)
-         (bp : Board.Blueprint.t)
+         (edit_state : Board.Blueprint.edit_state)
          (camera_pos : vec2)
          (scale : float)
          (mouse_pos : vec2) : Raylib.Rectangle.t =
@@ -163,19 +163,20 @@ let draw (text_writer : t)
   end;
   outer_boundary
 
-let click_left (text_writer : t) (bp : Board.Blueprint.t) (cursor_cell_pos : position)
+let click_left (text_writer : t) (edit_state : Board.Blueprint.edit_state) (cursor_cell_pos : pre_position)
                (camera_pos : vec2) (scale : float) : unit =
+
   text_writer := (Writing cursor_cell_pos)
 
-let write_char (text_writer : t) (char_code : int) (bp : Board.Blueprint.t) (pos : position) : unit =
+let write_char (text_writer : t) (char_code : int) (edit_state : Board.Blueprint.edit_state) (pos : pre_position) : unit =
   let char_obj_name = String.concat "" ["ascii" ; Int.to_string char_code] in
-  Board.Blueprint.set_static_object bp pos char_obj_name Raylib.Color.white;
-  if pos.x + 1 < Board.Blueprint.get_width bp then
+  Board.Blueprint.set_static_object edit_state pos char_obj_name Raylib.Color.white;
+  if pos.x + 1 < Board.Blueprint.get_width edit_state then
     text_writer := Writing({ pos with x = pos.x + 1 })
   else
     text_writer := Locating
 
-let handle_keypress (text_writer : t) (bp : Board.Blueprint.t) : bool =
+let handle_keypress (text_writer : t) (edit_state : Board.Blueprint.edit_state) : bool =
   let open Raylib in
   match !text_writer with
   | Writing(pos) ->
@@ -187,7 +188,7 @@ let handle_keypress (text_writer : t) (bp : Board.Blueprint.t) : bool =
     else if (is_key_down Key.Left_shift || is_key_down Key.Right_shift) then
       begin match List.find_opt (fun (key, _) -> is_key_pressed key) upper_assoc with
       | Some (_, code) ->
-        write_char text_writer code bp pos;
+        write_char text_writer code edit_state pos;
         true
       | None ->
         false
@@ -195,7 +196,7 @@ let handle_keypress (text_writer : t) (bp : Board.Blueprint.t) : bool =
     else
       begin match List.find_opt (fun (key, _) -> is_key_pressed key) lower_assoc with
       | Some (_, code) ->
-        write_char text_writer code bp pos;
+        write_char text_writer code edit_state pos;
         true
       | None ->
         false

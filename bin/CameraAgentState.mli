@@ -15,11 +15,9 @@ type 's state_functions = {
 
   create_handlers : ('s -> ((t option, board_interface) Channel.t_in_handler) list) option ;
 
-  get_position : 's -> Raylib.Vector2.t ;
-  (** Return the pixel-space position of the camera relative to the top-left of the board *)
-
-  get_scale : 's -> float ;
-  (** Returns the scale of the camera *)
+  get_viewports : 's -> camera_transform list ;
+  (** Gets a list of camera transforms to use for each layer that we're currently displaying
+      Layers are listed from back to front, e.g. a GUI layer should be listed last *)
 
   assert_invariants : (board_interface -> 's -> unit) option ;
   (** Function to call to assert state invariants. None means there are no assertable invariants. *)
@@ -76,9 +74,9 @@ val create : 's blueprint -> 's -> t
 (** [create blueprint initial_state] Creates a new agent state from [blueprint]
     using [initial_state] as initial state *)
 
-val get_pos : t -> vec2
-
-val get_scale : t -> float
+val get_viewports : t -> camera_transform list
+(** Gets a list of camera transforms to use for each layer that we're currently displaying
+    Layers are listed from back to front, e.g. a GUI layer should be listed last *)
 
 val name : t -> string
 (** [state_name s] is the name of the state [s] *)

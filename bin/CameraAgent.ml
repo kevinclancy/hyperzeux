@@ -18,7 +18,7 @@ type t = {
   (** The name of the agent *)
 
   board : board_interface ;
-  (** Interface to the board this agent part of *)
+  (** Interface to the board this agent is part of *)
 
   mutable agent_state : CameraAgentState.t ;
   (** The current scripts and set of callbacks used by this agent *)
@@ -69,11 +69,8 @@ let rec resume (agent : t) (t_delta_seconds : float) : unit =
   let open Actions in
   CameraAgentState.resume agent.agent_state agent.board t_delta_seconds
 
-let get_pos (agent : t) : vec2 =
-  CameraAgentState.get_pos agent.agent_state
-
-let get_scale (agent : t) : float =
-  CameraAgentState.get_scale agent.agent_state
+let get_viewports (agent : t) : camera_transform list =
+    CameraAgentState.get_viewports agent.agent_state
 
 let handle_messages (agent : t) : unit =
   match CameraAgentState.handle_messages agent.agent_state agent.board with

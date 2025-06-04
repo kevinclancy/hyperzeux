@@ -25,6 +25,9 @@ module Blueprint : sig
     val get_blueprint : edit_state -> t
     (** Get the currently edited blueprint *)
 
+    val get_layer_names : edit_state -> string list
+    (** Gets a list of all layer names *)
+
     val get_current_layer_name : edit_state -> string
     (** Return the name of the currently edited layer *)
 

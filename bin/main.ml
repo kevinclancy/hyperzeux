@@ -19,6 +19,7 @@ type selector_name =
   | AmbientAgentList
   | TextWriter
   | LineDrawer
+  | LayerEditor
 
 type editor_mode = {
   (** A selector for the current type of object we are placing in the
@@ -72,7 +73,9 @@ type edit_state = {
 
   ambient_selector_mode : editor_mode ;
 
-  text_writer_mode : editor_mode
+  text_writer_mode : editor_mode ;
+
+  layer_editor_mode : editor_mode ;
 }
 
 type game_state =
@@ -103,7 +106,7 @@ let create_edit_state (bp_edit_state : Board.Blueprint.edit_state) : edit_state 
   let ambient_selector = AmbientClassSelector.create () in
   let text_writer = TextWriter.create () in
   let line_drawer = LineDrawer.create () in
-
+  let layer_editor = LayerEditor.create () in
   (** Begin using the static object selector *)
   let object_selector_mode : editor_mode =
     let open ObjectSelector in
@@ -173,6 +176,17 @@ let create_edit_state (bp_edit_state : Board.Blueprint.edit_state) : edit_state 
       mouse_released_left = (fun _ _ -> ())
     }
   in
+  let layer_editor_mode : editor_mode =
+    let open LayerEditor in
+    {
+      name = LayerEditor ;
+      draw = (fun edit_state _ _ _ -> draw layer_editor edit_state) ;
+      handle_keypress = (fun _ -> false) ;
+      mouse_click_left = (fun _ _ _ _ -> ()) ;
+      mouse_down_left = (fun _ _ -> ()) ;
+      mouse_released_left = (fun _ _ -> ())
+    }
+  in
   {
     bp_edit_state ;
     camera_pos = Vector2.create 0.0 0.0 ;
@@ -193,7 +207,8 @@ let create_edit_state (bp_edit_state : Board.Blueprint.edit_state) : edit_state 
     line_drawer ;
     line_drawer_mode ;
 
-    text_writer_mode
+    text_writer_mode ;
+    layer_editor_mode ;
   }
 
 let () =
@@ -265,6 +280,8 @@ let () =
         edit_state.edit_mode <- edit_state.text_writer_mode
       else if is_key_pressed Key.Six then
         edit_state.edit_mode <- edit_state.line_drawer_mode
+      else if is_key_pressed Key.Seven then
+        edit_state.edit_mode <- edit_state.layer_editor_mode
       else if (is_key_pressed Key.O) && (is_key_down Key.Left_control) then
         begin
           let opt_obj = get_static_obj () in

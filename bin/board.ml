@@ -98,6 +98,9 @@ module Blueprint = struct
   let get_blueprint (s : edit_state) : t =
     s.blueprint
 
+  let get_layer_names (s : edit_state) : string list =
+    List.map fst (StringMap.to_list s.blueprint.layers)
+
   let get_current_layer_name (s : edit_state) : string =
     s.current_layer
 

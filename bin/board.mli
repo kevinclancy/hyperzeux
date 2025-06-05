@@ -16,6 +16,13 @@ module Blueprint : sig
     (** [create_initial state width height blank_char_name] Creates an initial editor state whose initial layer
         has dimensions [width] and [height] and whose cells are filled with the Texture identified by [blank_char_name] *)
 
+    val add_layer : edit_state -> string -> int -> int -> unit
+    (** [add_layer edit_state name width height] adds a new layer named [name] that is [width] cells
+        across and [height] cells high, filled with empty cells  *)
+
+    val select_layer : edit_state -> string -> unit
+    (** [select_layer edit_state layer_name] Selects [layer_name] as the current layer*)
+
     val get_width : edit_state -> int
     (** Get the number of columns in the currently edited layer *)
 

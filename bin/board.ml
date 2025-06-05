@@ -82,7 +82,7 @@ module Blueprint = struct
     mutable current_layer : string ;
     (** The layer we are currently editing *)
 
-    render_texture : Raylib.RenderTexture.t ;
+    mutable render_texture : Raylib.RenderTexture.t ;
     (** Texture to render to screen *)
   }
 
@@ -159,6 +159,18 @@ module Blueprint = struct
           (width * Config.char_width)
           (height * Config.char_height);
     }
+
+  let add_layer (s : edit_state) (name : string) (width : int) (height : int) =
+    let layer = create_empty_layer width height "empty" in
+    s.blueprint.layers <- (StringMap.add name layer s.blueprint.layers)
+
+  let select_layer (s : edit_state) (name : string) =
+    s.current_layer <- name;
+    let current_layer = StringMap.find name s.blueprint.layers in
+    s.render_texture <-
+      Raylib.load_render_texture
+        (current_layer.width * Config.char_width)
+        (current_layer.height * Config.char_height)
 
   let get_static_object_ref (bp : t) (pos : position) : static_object_blueprint ref =
     let layer = StringMap.find pos.layer bp.layers in
@@ -471,8 +483,9 @@ module Blueprint = struct
   let draw (s : edit_state) (pos : Raylib.Vector2.t) (scale : float) : unit =
     let open Raylib in
     clear_background Color.gray;
-    let width = (Float.of_int Config.board_pixels_width) in
-    let height = (Float.of_int Config.board_pixels_height) in
+    let current_layer = get_current_layer s in
+    let width = Float.of_int @@ current_layer.width * Config.char_width in
+    let height = Float.of_int @@ current_layer.height * Config.char_height in
     let src = Rectangle.create 0.0 0.0 width (-. height) in
     let dest = Rectangle.create 0.0 0.0 (width *. scale) (height *. scale) in
     draw_texture_pro (RenderTexture.texture s.render_texture) src dest pos 0.0 Color.white;

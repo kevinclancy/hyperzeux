@@ -42,13 +42,13 @@ type t = region_editor_state ref
 
 let initial_menu_state =
   MenuActive {
-    region_list_scroll_index = 0 ;
+    region_list_scroll_index = -1 ;
     focused_region_index = -1 ;
     selected_region_index = -1 ;
 
-    square_list_scroll_index = 0 ;
+    square_list_scroll_index = -1 ;
     focused_square_index = -1 ;
-    selected_square_index = 0 ;
+    selected_square_index = -1 ;
     region_description = "" ;
   }
 
@@ -114,6 +114,7 @@ let draw_menu (region_editor_state : t) (menu_state : menu_state) (edit_state : 
       | n ->
         let selected_region_name = List.nth region_names selected_index in
         let region = Board.Blueprint.get_region edit_state selected_region_name in
+        if n <> menu_state.selected_region_index then menu_state.selected_square_index <- -1;
         Some(selected_region_name, region)
     in
     menu_state.region_list_scroll_index <- scroll_index;
@@ -151,32 +152,51 @@ let draw_menu (region_editor_state : t) (menu_state : menu_state) (edit_state : 
         ()
     end;
 
+  if del_region_pressed then
+      Option.iter (fun (name, reg) -> Board.Blueprint.del_region edit_state name) selected_region;
+
   (* Draw components (the squares that make up the region) list for the currently selected region *)
-  let components_list_bottom =
+  let components_list_bottom, selected_component_name =
     let left, top = components_label_left, region_list_top in
     let width, height = region_list_width, region_list_height in
     let boundary = Rectangle.create left top width height in
-    let selected_index, focused_index, scroll_index =
+    let selected_index, focused_index, scroll_index, component_names =
       match selected_region with
       | Some(_, region) ->
         let component_names = List.map fst (StringMap.to_list region.components) in
-        Raygui.list_view_ex
-          boundary
-          component_names
-          menu_state.focused_square_index
-          menu_state.square_list_scroll_index
-          menu_state.selected_square_index
+        let selected_ind, focused_ind, scroll_ind =
+          Raygui.list_view_ex
+            boundary
+            component_names
+            menu_state.focused_square_index
+            menu_state.square_list_scroll_index
+            menu_state.selected_square_index
+        in
+        selected_ind, focused_ind, scroll_ind, component_names
       | None ->
-        Raygui.list_view_ex
-          boundary
-          []
-          menu_state.focused_square_index
-          menu_state.square_list_scroll_index
-          menu_state.selected_square_index
+        let (a,b,c) =
+          Raygui.list_view_ex
+            boundary
+            []
+            menu_state.focused_square_index
+            menu_state.square_list_scroll_index
+            menu_state.selected_square_index
+        in
+        a,b,c,[]
     in
     menu_state.square_list_scroll_index <- scroll_index;
     menu_state.focused_square_index <- focused_index;
     menu_state.selected_square_index <- selected_index;
+    let selected_component_name =
+      match selected_index, (List.is_empty component_names) with
+      | -1, false
+      | _, true ->
+        None
+      | n ->
+        let selected_component_name = List.nth component_names selected_index in
+        Some(selected_component_name)
+    in
+    region_list_bottom, selected_component_name
   in
 
   let new_component_pressed, del_component_pressed =
@@ -195,6 +215,15 @@ let draw_menu (region_editor_state : t) (menu_state : menu_state) (edit_state : 
 
     new_pressed, del_pressed
   in
+
+  if del_component_pressed then
+    begin match selected_region, selected_component_name with
+    | Some(region_name, region), Some(component_name) ->
+      region.components <- StringMap.remove component_name region.components
+    | _ ->
+      ()
+    end;
+
 
   begin match new_component_pressed, selected_region with
   | true, Some(region_name, region) ->

@@ -87,6 +87,9 @@ module Blueprint : sig
     val add_region : edit_state -> string -> region -> unit
     (** [add_region s region_name region] Adds [region] with name [region_name] to region map *)
 
+    val del_region : edit_state -> string -> unit
+    (** [del_region state region_name] Deletes region with specified name *)
+
     val draw_prep : edit_state -> unit
     (** [draw_prep blueprint] Draws board components to a render texture in preparation for drawing *)
 

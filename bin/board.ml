@@ -253,6 +253,9 @@ module Blueprint = struct
   let add_region (s : edit_state) (name :string) (region : region) =
     s.blueprint.regions <- StringMap.add name region s.blueprint.regions
 
+  let del_region (s : edit_state) (name :string) =
+    s.blueprint.regions <- StringMap.remove name s.blueprint.regions
+
   let add_waypoint (s : edit_state) (waypoint_name : string) (pos : pre_position) : unit =
     let pos' = { layer = s.current_layer; x = pos.x; y = pos.y } in
     assert (StaticObjectMap.get (!(get_static_object_ref s.blueprint pos')).name).traversable;

@@ -43,7 +43,10 @@ module Blueprint : sig
         [key] and color [color] *)
 
     val get_static_object_name : edit_state -> pre_position -> string
-    (** [get_static_object blueprint pos] Returns name of static object at position [pos] *)
+    (** [get_static_object_name blueprint pos] Returns name of static object at position [pos] *)
+
+    val get_static_object_color : edit_state -> pre_position -> Raylib.Color.t
+    (** [get_static_object blueprint pos] Returns static object at position [pos] *)
 
     val add_agent : edit_state -> string -> Raylib.Color.t -> string -> string -> pre_position -> unit
     (** [add_agent blueprint agent_name color agent_class_name texture_name pos] *)

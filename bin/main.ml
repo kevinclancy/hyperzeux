@@ -38,7 +38,12 @@ type editor_mode = {
   *)
 
   handle_keypress : Board.Blueprint.edit_state -> bool ;
-  (** Handle any relevant pending keypresses, returning true if some keypress
+  (** [handle_keypress edit_state] Handle any relevant pending keypresses, returning true if some keypress
+    was handled and false otherwise *)
+
+  handle_keypress_pos : Board.Blueprint.edit_state -> pre_position -> bool ;
+  (** [handle_keypress_pos edit_state pre_position] Handle any relevant pending keypresses when the mouse cursor
+    is hovering over cell position [pre_position] of the current layer, returning true if some keypress
     was handled and false otherwise *)
 
   mouse_click_left : Board.Blueprint.edit_state -> pre_position -> vec2 -> float -> unit ;
@@ -113,7 +118,8 @@ let create_edit_state (bp_edit_state : Board.Blueprint.edit_state) : edit_state 
     {
       name = StaticObjectSelector ;
       draw = (fun _ _ _ _ -> draw object_selector) ;
-      handle_keypress = (fun _ -> handle_keypress object_selector);
+      handle_keypress = (fun edit_state -> handle_keypress object_selector edit_state);
+      handle_keypress_pos = (fun edit_state prepos -> handle_keypress_pos object_selector edit_state prepos);
       mouse_click_left = (fun _ _ _ _ -> ()) ;
       mouse_down_left = instantiate object_selector ;
       mouse_released_left = (fun _ _ -> ())
@@ -126,6 +132,7 @@ let create_edit_state (bp_edit_state : Board.Blueprint.edit_state) : edit_state 
       name = AgentSelector ;
       draw = (fun _ _ _ _ -> draw agent_selector) ;
       handle_keypress = (fun _ -> handle_keypress agent_selector) ;
+      handle_keypress_pos = (fun _ _ -> false);
       mouse_click_left = (fun edit_state cell_pos _ _ -> instantiate agent_selector edit_state cell_pos) ;
       mouse_down_left = (fun _ _ -> ()) ;
       mouse_released_left = (fun _ _ -> ())
@@ -138,6 +145,7 @@ let create_edit_state (bp_edit_state : Board.Blueprint.edit_state) : edit_state 
       name = AmbientAgentList ;
       draw = (fun edit_state _ _ _ -> draw ambient_selector edit_state) ;
       handle_keypress = (fun _ -> false) ;
+      handle_keypress_pos = (fun _ _ -> false);
       mouse_click_left = (fun _ _ _ _ -> ()) ;
       mouse_down_left = (fun _ _ -> ()) ;
       mouse_released_left = (fun _ _ -> ())
@@ -149,6 +157,7 @@ let create_edit_state (bp_edit_state : Board.Blueprint.edit_state) : edit_state 
       name = RegionEditor ;
       draw = (fun edit_state camera_pos scale mouse_pos -> draw region_editor edit_state camera_pos scale mouse_pos) ;
       handle_keypress = (fun _ -> false) ;
+      handle_keypress_pos = (fun _ _ -> false);
       mouse_click_left = (fun edit_state cell_pos camera_pos scale-> click_left region_editor edit_state cell_pos camera_pos scale) ;
       mouse_down_left = (fun _ _ -> ()) ;
       mouse_released_left = (fun _ _ -> ())
@@ -160,6 +169,7 @@ let create_edit_state (bp_edit_state : Board.Blueprint.edit_state) : edit_state 
       name = TextWriter ;
       draw = (fun edit_state camera_pos scale mouse_pos -> draw text_writer edit_state camera_pos scale mouse_pos) ;
       handle_keypress = (fun edit_state -> handle_keypress text_writer edit_state) ;
+      handle_keypress_pos = (fun _ _ -> false);
       mouse_click_left = (fun edit_state cursor_cell_pos camera_pos scale -> click_left text_writer edit_state cursor_cell_pos camera_pos scale) ;
       mouse_down_left = (fun _ _ -> ()) ;
       mouse_released_left = (fun _ _ -> ())
@@ -171,6 +181,7 @@ let create_edit_state (bp_edit_state : Board.Blueprint.edit_state) : edit_state 
       name = LineDrawer ;
       draw = (fun edit_state _ _ _ -> draw line_drawer edit_state) ;
       handle_keypress = (fun _ -> false) ;
+      handle_keypress_pos = (fun _ _ -> false);
       mouse_click_left = (fun _ _ _ _ -> ()) ;
       mouse_down_left = (fun bp pos -> instantiate line_drawer bp pos) ;
       mouse_released_left = (fun _ _ -> ())
@@ -182,6 +193,7 @@ let create_edit_state (bp_edit_state : Board.Blueprint.edit_state) : edit_state 
       name = LayerEditor ;
       draw = (fun edit_state _ _ _ -> draw layer_editor edit_state) ;
       handle_keypress = (fun _ -> false) ;
+      handle_keypress_pos = (fun _ _ -> false);
       mouse_click_left = (fun _ _ _ _ -> ()) ;
       mouse_down_left = (fun _ _ -> ()) ;
       mouse_released_left = (fun _ _ -> ())
@@ -325,12 +337,6 @@ let () =
       Board.Blueprint.draw bp_edit_state camera_pos !scale;
         (* let curr_obj_texture = TextureMap.get curr_object.texture_name in *)
       let edit_rect = edit_mode.draw bp_edit_state camera_pos !scale mouse_pos in
-        (* draw_texture_ex
-          curr_obj_texture
-          (Vector2.create Config.(Float.of_int @@ screen_width - char_width - 50) 50.0)
-          0.0
-          1.0
-          Color.white; *)
       end_drawing ();
 
       if not (((Vector2.x mouse_pos) >= Rectangle.x edit_rect)
@@ -350,6 +356,8 @@ let () =
 
           if Raylib.is_mouse_button_down MouseButton.Left && contained_in_board mouse_cell_x mouse_cell_y then
             edit_mode.mouse_down_left bp_edit_state {x = mouse_cell_x ; y = mouse_cell_y};
+
+          ignore @@ edit_mode.handle_keypress_pos bp_edit_state {x = mouse_cell_x ; y = mouse_cell_y};
         end
   done;
 

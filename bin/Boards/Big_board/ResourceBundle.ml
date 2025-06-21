@@ -13,6 +13,8 @@ let resources : ResourceBundleMap.resource_bundle_def = {
     "person2_west.png";
     "empty_cell.png";
     "solid_wall.png";
+    "transparent.png" ;
+    "transparent_viz.png" ;
     "checkered_wall.png";
     "plant_1.png";
     "plant_2.png";
@@ -50,7 +52,7 @@ let resources : ResourceBundleMap.resource_bundle_def = {
     { name = "checkered_wall" ; texture_name = "checkered_wall.png" ; traversable = false } ;
     { name = "plant_1" ; texture_name = "plant_1.png" ; traversable = true } ;
     { name = "plant_2" ; texture_name = "plant_2.png" ; traversable = true } ;
-
+    { name = "transparent" ; texture_name = "transparent.png" ; traversable = false } ;
     (** Todo: create a system to auto-define line bundles using a prefix such as 'double_line' *)
     { name = "double_line_nesw" ; texture_name = "double_line_nesw.png" ; traversable = false } ;
     { name = "double_line_nesx" ; texture_name = "double_line_nesx.png" ; traversable = false } ;

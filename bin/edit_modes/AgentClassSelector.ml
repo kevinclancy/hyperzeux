@@ -68,6 +68,8 @@ let handle_keypress (selector : t) : bool =
       next_obj selector;
       true
     end
+  else if is_key_pressed Key.F then
+    failwith "bleh"
   else
     false
 

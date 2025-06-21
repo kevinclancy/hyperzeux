@@ -185,7 +185,8 @@ module Blueprint = struct
     let static_obj = StaticObjectMap.get static_obj_key in
     let open Raylib in
     begin_texture_mode layer.static_bg_texture;
-      let texture = TextureMap.get static_obj.texture_name in
+      let tex_name = if static_obj.texture_name = "transparent.png" then "transparent_viz.png" else static_obj.texture_name in
+      let texture = TextureMap.get tex_name in
       let x = Float.of_int @@ Config.char_width * pos.x in
       let y = Float.of_int @@ Config.char_height * pos.y in
       draw_texture_ex texture (Vector2.create x y) 0.0 1.0 color;
@@ -197,6 +198,9 @@ module Blueprint = struct
 
   let get_static_object_name (s : edit_state) (pos : pre_position) : string =
     !(get_static_object_ref s.blueprint { layer = s.current_layer ; x = pos.x ; y = pos.y }).name
+
+  let get_static_object_color (s : edit_state) (pos : pre_position) : Raylib.Color.t =
+    !(get_static_object_ref s.blueprint { layer = s.current_layer ; x = pos.x ; y = pos.y }).color
 
   let remove_agent_at (bp : t) (pos : position) : unit =
     bp.agents <- StringMap.filter (fun _ agent_bp -> agent_bp.pos <> pos) bp.agents

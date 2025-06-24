@@ -531,6 +531,8 @@ type t = {
   (** Maps each agent name to agent, paired with result of last action the agent yielded to board
       (or Success if the agent has not yet performed an action). *)
 
+  regions : (region * RegionAgent.t option) StringMap.t ;
+
   mutable ambient_agents : AmbientAgent.t StringMap.t ;
   (** Maps each ambient agent name to an ambient agent *)
 
@@ -620,6 +622,17 @@ let update (board : t) : unit =
           set_agent board pos None;
           set_agent board pos' (Some agent);
           Agent.set_position agent pos';
+          let handle_entrance_exit (region_name : string) ((region, region_agent_opt) : region * RegionAgent.t option) : unit =
+            (** TODO: We need to track the set of regions each agent is currently in so that we can call on_puppet_exit as well *)
+            if Region.contains region pos' then begin
+              match region_agent_opt with
+              | Some(region_agent) ->
+                RegionAgent.on_puppet_enter region_agent (PuppetExternal.from (Agent.puppet agent))
+              | None ->
+                ()
+            end
+          in
+          StringMap.iter handle_entrance_exit board.regions;
           prev_result := Success
         | true ->
           prev_result := Failure;
@@ -637,6 +650,10 @@ let update (board : t) : unit =
       (* the result of the previous action hasn't been returned to the agent yet, so keep it *)
       ()
   in
+  let update_region_agent (_ : string) ((_, region_agent_opt)) : unit =
+    Option.iter (fun agent -> RegionAgent.resume agent dt) region_agent_opt
+  in
+  StringMap.iter update_region_agent board.regions;
   StringMap.iter update_ambient_agent board.ambient_agents;
   StringMap.iter update_agent !(board.agents);
   CameraAgent.resume board.camera dt
@@ -717,10 +734,22 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
     cell := { !(cell) with agent = Some agent }
   in
   StringMap.iter add_agent !agents;
+  let create_region_agent (region_name : string) (region : region) : region * (RegionAgent.t option) =
+    match RegionAgentClassMap.try_get region_name with
+    | Some(region_agent_class) ->
+      region, Some(RegionAgent.create board_intf region_agent_class)
+    | None ->
+      region, None
+  in
+  let regions =
+    blueprint.regions |>
+    StringMap.mapi create_region_agent
+  in
   {
     layers ;
     camera = CameraAgent.create board_intf (CurrentCameraClass.get ()) ;
     agents = agents;
     ambient_agents = ambient_agents ;
+    regions ;
     waypoints = blueprint.waypoints;
   }

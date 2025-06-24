@@ -24,6 +24,10 @@ module type OrdMap = sig
 
       Precondition: map contains an element with name [name] *)
 
+  val try_get : string -> a option
+  (** [try_get name] Gets the element named [name] from the map, or returns None if
+      the map contains no such item. *)
+
   val get_all_names : unit -> string list
   (** Return names of all elements *)
 
@@ -80,6 +84,9 @@ module Make (S : OrdMapArgs) : (OrdMap with type a = S.a) = struct
 
   let get (elem_name : string) : S.a =
     StringMap.find elem_name !name_to_elem
+
+  let try_get (elem_name : string) : S.a option =
+    StringMap.find_opt elem_name !name_to_elem
 
   let get_all_names () : string list =
     List.map fst (StringMap.bindings !name_to_elem)

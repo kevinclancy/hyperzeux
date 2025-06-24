@@ -46,34 +46,28 @@ let create (board : board_interface)
 let name (agent : t) : string =
   agent.name
 
-let on_puppet_enter (agent : t) (board : board_interface) (puppet : PuppetExternal.t) : unit =
-  match RegionAgentState.on_puppet_enter agent.agent_state board puppet with
+let on_puppet_enter (agent : t) (puppet : PuppetExternal.t) : unit =
+  match RegionAgentState.on_puppet_enter agent.agent_state agent.board puppet with
   | Some(next_state) ->
     agent.agent_state <- next_state
   | None ->
     ()
 
-let on_puppet_exit (agent : t) (board : board_interface) (puppet : PuppetExternal.t) : unit =
-  match RegionAgentState.on_puppet_exit agent.agent_state board puppet with
+let on_puppet_exit (agent : t) (puppet : PuppetExternal.t) : unit =
+  match RegionAgentState.on_puppet_exit agent.agent_state agent.board puppet with
   | Some(next_state) ->
     agent.agent_state <- next_state
   | None ->
     ()
 
-let rec resume (agent : t) : unit =
+let rec resume (agent : t) (t_delta_seconds : float) : unit =
   let open Effect.Deep in
-  agent.action_meter := !(agent.action_meter) +. (Raylib.get_frame_time ()) *. !(agent.speed) *. Config.speed;
-  if !(agent.action_meter) > 1.0 then
-    begin
-      agent.action_meter := !(agent.action_meter) -. (Float.round !(agent.action_meter));
-      match RegionAgentState.resume agent.agent_state agent.board with
-      | Continue ->
-        ()
-      | ChangeState(next_state) ->
-        agent.agent_state <- next_state
-    end
-  else
+  let open Actions in
+  match RegionAgentState.resume agent.agent_state agent.board t_delta_seconds with
+  | Continue ->
     ()
+  | ChangeState(s) ->
+    agent.agent_state <- s
 
 let handle_messages (agent : t) : unit =
   match RegionAgentState.handle_messages agent.agent_state agent.board with

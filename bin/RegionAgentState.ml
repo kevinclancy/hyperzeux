@@ -129,7 +129,7 @@ let create (state_bp : 's blueprint)
 let name (state : t) : string =
   state.name
 
-let resume (state : t) (board : board_interface) : resume_result =
+let resume (state : t) (board : board_interface) (t_delta_seconds : float) : resume_result =
   let open Effect.Deep in
   let open Actions in
   match state.script_state with

@@ -22,20 +22,17 @@ val create : board_interface ->
              t
 (** [create board agent_blueprint name] Creates an agent *)
 
-val draw : t -> unit
-(** [draw agent] draws [agent] to screen *)
-
 val name : t -> string
 (** The name of the region agent *)
 
-val on_puppet_enter : t -> board_interface -> PuppetExternal.t -> unit
+val on_puppet_enter : t -> PuppetExternal.t -> unit
 (** Called in response to a puppet entering this region *)
 
-val on_puppet_exit : t -> board_interface -> PuppetExternal.t -> unit
+val on_puppet_exit : t -> PuppetExternal.t -> unit
 (** Called in response to a puppet exiting this region *)
 
-val resume : t -> unit
-(** [resume agent] Resumes [region agent]'s script. *)
+val resume : t -> float -> unit
+(** [resume agent t_delta_seconds] Resumes [region agent]'s script. *)
 
 val handle_messages : t -> unit
 (** Handle all messages from incoming channels *)

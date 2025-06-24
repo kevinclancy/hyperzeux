@@ -23,6 +23,10 @@ module type OrdMap = sig
 
       Precondition: map contains an element with name [name] *)
 
+val try_get : string -> a option
+(** [try_get name] Gets the element named [name] from the map, or returns None if
+    the map contains no such item. *)
+
   val get_all_names : unit -> string list
   (** Return names of all elements *)
 

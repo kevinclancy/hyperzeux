@@ -63,8 +63,8 @@ val create : 's blueprint -> 's -> t
 val name : t -> string
 (** [state_name s] is the name of the state [s] *)
 
-val resume : t -> board_interface -> resume_result
-(** [resume state prev_result] Resume the [state]'s coroutine, where [prev_result] tells whether
+val resume : t -> board_interface -> float -> resume_result
+(** [resume state prev_result t_delta_seconds] Resume the [state]'s coroutine, where [prev_result] tells whether
     the previously yielded action suceeded *)
 
 val handle_messages : t -> board_interface -> t option

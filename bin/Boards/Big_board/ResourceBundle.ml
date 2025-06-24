@@ -44,8 +44,10 @@ let resources : ResourceBundleMap.resource_bundle_def = {
   ambient_agent_classes = [
     Shared.Ambient_agents.SpeechBox.speech_box_class
   ] ;
+  region_agent_classes = [
+    Agents.HotSpot.hotspot_class
+  ];
   camera_class = Camera.camera ;
-
   static_object_defs = [
     { name = "empty" ; texture_name = "empty_cell.png" ; traversable = true } ;
     { name = "wall" ; texture_name = "solid_wall.png" ; traversable = false } ;

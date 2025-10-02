@@ -23,8 +23,8 @@ module type OrdMap = sig
 
       Precondition: map contains an element with name [name] *)
 
-val try_get : string -> a option
-(** [try_get name] Gets the element named [name] from the map, or returns None if
+  val try_get : string -> a option
+  (** [try_get name] Gets the element named [name] from the map, or returns None if
     the map contains no such item. *)
 
   val get_all_names : unit -> string list
@@ -48,6 +48,9 @@ val try_get : string -> a option
   val search : string -> a list
   (** [search s] is a list of all elements of the map whose names contains [s],
       or empty if s has fewer than three characters. *)
+
+  val to_list : unit -> (string * a) list
+  (** [to_list ()] Returns a list of (name, element) pairs in insertion order. *)
 end
 
 module Make : functor (S : OrdMapArgs) -> (OrdMap with type a = S.a)

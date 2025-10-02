@@ -1,4 +1,3 @@
-
 open Common
 open BoardInterface
 open CameraAgentState
@@ -27,21 +26,6 @@ let state_following_player : camera_fields CameraAgentState.blueprint = {
               (min (max (Vector2.y ideal_pos) 0.) max_camera_y);
           ignore (Effect.perform @@ CameraAction ())
         done
-      );
-
-      create_handlers = Some(fun _ ->
-        let open Shared.Channels.Speech in
-        [
-          Channel.attach_handler speech (fun speech_data board ->
-            match speech_data.command with
-            | DisplaySpeech { text_to_display } ->
-              Printf.printf "handler for speech!";
-              board.draw_text "speech_box" text_to_display;
-              None
-            | _ ->
-              None
-          )
-        ]
       );
 
       get_viewports = (fun (fields : camera_fields) ->

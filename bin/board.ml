@@ -110,7 +110,7 @@ module Blueprint = struct
     let board_height = height * Config.char_height in
     let static_bg_texture = load_render_texture board_width board_height in
     begin_texture_mode static_bg_texture;
-      draw_rectangle 0 0 board_width board_height Color.black;
+      draw_rectangle 0 0 board_width board_height (Color.create 0 0 0 0);
     end_texture_mode ();
     let grid_texture = load_render_texture board_width board_height in
     begin_texture_mode grid_texture;
@@ -525,7 +525,8 @@ type t = {
   layers : layer StringMap.t ;
   (** Maps each layer name to a layer *)
 
-  camera : CameraAgent.t ;
+  cameras : CameraAgent.t list ;
+  (** List of camera agents in drawing order *)
 
   agents : ((Agent.t * (Actions.action_result ref)) StringMap.t) ref;
   (** Maps each agent name to agent, paired with result of last action the agent yielded to board
@@ -597,8 +598,11 @@ let draw_viewport (board : t) (vp : camera_transform) : unit =
 let draw (board : t) : unit =
   let open Raylib in
   clear_background Color.gray;
-  let viewports = CameraAgent.get_viewports board.camera in
-  List.iter (draw_viewport board) viewports;
+  let draw_camera_viewports (camera : CameraAgent.t) : unit =
+    let viewports = CameraAgent.get_viewports camera in
+    List.iter (draw_viewport board) viewports
+  in
+  List.iter draw_camera_viewports board.cameras;
   StringMap.iter (fun _ ambient -> AmbientAgent.draw ambient) board.ambient_agents
 
 let update (board : t) : unit =
@@ -653,11 +657,15 @@ let update (board : t) : unit =
   let update_region_agent (_ : string) ((_, region_agent_opt)) : unit =
     Option.iter (fun agent -> RegionAgent.resume agent dt) region_agent_opt
   in
+  let update_camera_agent (camera : CameraAgent.t) : unit =
+    CameraAgent.handle_messages camera;
+    CameraAgent.update_input camera;
+    CameraAgent.resume camera dt
+  in
   StringMap.iter update_region_agent board.regions;
   StringMap.iter update_ambient_agent board.ambient_agents;
   StringMap.iter update_agent !(board.agents);
-  CameraAgent.resume board.camera dt;
-  CameraAgent.handle_messages board.camera
+  List.iter update_camera_agent board.cameras
 
 let refresh_static_region (layers : layer StringMap.t) (region : region) : unit =
   (** Refresh the static texture for all components of a region *)
@@ -699,7 +707,7 @@ let layer_from_blueprint (layer : Blueprint.layer) : layer =
   let height_pixels = layer.height * Config.char_height in
   let static_texture = load_render_texture width_pixels height_pixels in
   begin_texture_mode static_texture;
-    draw_rectangle 0 0 width_pixels height_pixels Color.black;
+    draw_rectangle 0 0 width_pixels height_pixels (Color.create 0 0 0 0);
     for x = 0 to layer.width-1 do
       for y = 0 to layer.height-1 do
         let cell = Array.get (Array.get grid x) y in
@@ -781,9 +789,14 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
     blueprint.regions |>
     StringMap.mapi create_region_agent
   in
+  let cameras =
+    CameraAgentClassMap.to_list () |>
+    List.map snd |>
+    List.map (CameraAgent.create board_intf)
+  in
   {
     layers ;
-    camera = CameraAgent.create board_intf (CurrentCameraClass.get ()) ;
+    cameras ;
     agents = agents;
     ambient_agents = ambient_agents ;
     regions ;

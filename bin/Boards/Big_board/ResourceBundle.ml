@@ -47,7 +47,10 @@ let resources : ResourceBundleMap.resource_bundle_def = {
   region_agent_classes = [
     Agents.HotSpot.hotspot_class
   ];
-  camera_class = Camera.camera ;
+  camera_classes = [
+    Camera.WorldCamera.camera ;
+    Camera.InterfaceCamera.camera
+  ] ;
   static_object_defs = [
     { name = "empty" ; texture_name = "empty_cell.png" ; traversable = true } ;
     { name = "wall" ; texture_name = "solid_wall.png" ; traversable = false } ;

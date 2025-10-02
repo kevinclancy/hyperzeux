@@ -49,6 +49,9 @@ module type OrdMap = sig
   val search : string -> a list
   (** [search s] is a list of all elements of the map whose names contains [s],
       or empty if s has fewer than three characters. *)
+
+  val to_list : unit -> (string * a) list
+  (** [to_list ()] Returns a list of (name, element) pairs in insertion order. *)
 end
 
 module Make (S : OrdMapArgs) : (OrdMap with type a = S.a) = struct
@@ -132,4 +135,8 @@ module Make (S : OrdMapArgs) : (OrdMap with type a = S.a) = struct
     else
       List.map snd @@
         (IntMap.to_list @@ IntMap.filter (fun _ e -> contains_text (S.get_name e)) !ord_to_elem)
+
+  let to_list () : (string * 'a) list =
+    IntMap.to_list !ord_to_elem |>
+    List.map (fun (_, elem) -> (S.get_name elem, elem))
 end

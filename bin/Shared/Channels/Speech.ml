@@ -1,19 +1,14 @@
 open Actions
 
 type speech_command =
-  | BeginSpeech
-  (** Display the speech bubble *)
-  | DisplaySpeech of { text_to_display : string }
-  (** Display some text in the speech bubble *)
+  | BeginSpeech of string * bool ref
+  (** [BeginSpeech(initial_text, is_finished)] Spawns a speech bubble displaying [initial_text].
+      [is_finished] becomes true when the user acknowledges they are finished reading the speech. *)
+  | DisplaySpeech of string * bool ref
+  (** [DisplaySpeech(text_to_display, is_finished)] displays [text_to_display] in the speech bubble.
+      [is_finished] becomes true when the user acknowledges they are finished reading the speech. *)
   | EndSpeech
-  (** Hide the speech bubble *)
+  (** [EndSpeech] hides the speech bubble *)
 
-type speech_data = {
-  command : speech_command ;
-  (** The command to perform *)
-  is_finished : bool ref
-  (** Starts false and becomes true when the command has finished. *)
-}
-
-let speech : speech_data Channel.t = Channel.create "speech"
+let speech : speech_command Channel.t = Channel.create "speech"
 (** A channel for modifying the current speech bubble *)

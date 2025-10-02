@@ -153,7 +153,11 @@ let draw_menu (region_editor_state : t) (menu_state : menu_state) (edit_state : 
     end;
 
   if del_region_pressed then
-      Option.iter (fun (name, reg) -> Board.Blueprint.del_region edit_state name) selected_region;
+      begin
+        Option.iter (fun (name, reg) -> Board.Blueprint.del_region edit_state name) selected_region;
+        menu_state.selected_region_index <- -1;
+        menu_state.selected_square_index <- -1
+      end;
 
   (* Draw components (the squares that make up the region) list for the currently selected region *)
   let components_list_bottom, selected_component_name =

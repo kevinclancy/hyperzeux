@@ -5,7 +5,9 @@ let draw_text_in_region (set_static_object : position -> string -> unit) (refres
   (** [draw_text_in_region set_static_object refresh_static regions region_name text_to_draw]
       Draws [text_to_draw] into the region named [region_name],
       starting from the top-left corner of the region and wrapping text as needed.
+
       [set_static_object pos static_obj_name] sets the static object at position [pos] to the static object named [static_obj_name].
+
       [refresh_static region] refreshes the static texture of the layer containing the region, but only within the area of the region for efficiency.
       Precondition: the region must have exactly one component. *)
 
@@ -29,6 +31,11 @@ let draw_text_in_region (set_static_object : position -> string -> unit) (refres
       let char_code = Char.code c in
 
       if char_code = 10 then begin
+        (* Fill rest of the current line with "blank" *)
+        while !current_x <= right_boundary do
+          set_static_object {layer = layer_name; x = !current_x; y = !current_y} "empty";
+          current_x := !current_x + 1
+        done;
         current_x := start_x;
         current_y := !current_y + 1
       end
@@ -44,5 +51,15 @@ let draw_text_in_region (set_static_object : position -> string -> unit) (refres
       end
     )
     text_to_draw;
+
+  (* Fill remaining cells in the region with "blank" *)
+  while !current_y <= bottom_boundary do
+    while !current_x <= right_boundary && !current_y <= bottom_boundary do
+      set_static_object {layer = layer_name; x = !current_x; y = !current_y} "empty";
+      current_x := !current_x + 1
+    done;
+    current_x := start_x;
+    current_y := !current_y + 1
+  done;
 
   refresh_static region

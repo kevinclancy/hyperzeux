@@ -14,7 +14,7 @@ let board_pixels_width_f = Float.of_int board_pixels_width
 let board_pixels_height_f = Float.of_int board_pixels_height
 
 let screen_width = 2048
-let screen_height = 1536
+let screen_height = 1120
 let screen_width_f = Float.of_int screen_width
 let screen_height_f = Float.of_int screen_height
 

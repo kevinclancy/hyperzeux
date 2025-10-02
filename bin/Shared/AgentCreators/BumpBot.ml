@@ -33,7 +33,7 @@ let create (agent_name : string)
           (** TODO: change state to Idle at end of script *)
           script = Some (fun board puppet _ ->
             script board puppet;
-            ScriptFunctions.set_state @@ AgentState.create idle_state ()
+            AgentScriptFunctions.set_state @@ AgentState.create idle_state ()
           )
     };
 

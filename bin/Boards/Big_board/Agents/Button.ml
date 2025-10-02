@@ -6,7 +6,7 @@ open BoardInterface
 open Shared.Channels
 
 let script (board : board_interface) (me : Puppet.t) : unit =
-  let open Shared.Channels.Speech in
+  let open Shared.AgentScriptFunctions in
   say "hello world";
   say "goodbye world"
 

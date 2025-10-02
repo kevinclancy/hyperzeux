@@ -56,6 +56,8 @@ and resume_result =
   | ChangeState of t
   (** [ChangeState s] Tells the agent to change to state [s] *)
 
+exception ChangeState of t
+
 val create : 's blueprint -> 's -> t
 (** [create blueprint initial_state] Creates a new agent state from [blueprint]
     using [initial_state] as initial state *)

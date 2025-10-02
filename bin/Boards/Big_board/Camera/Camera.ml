@@ -29,6 +29,21 @@ let state_following_player : camera_fields CameraAgentState.blueprint = {
         done
       );
 
+      create_handlers = Some(fun _ ->
+        let open Shared.Channels.Speech in
+        [
+          Channel.attach_handler speech (fun speech_data board ->
+            match speech_data.command with
+            | DisplaySpeech { text_to_display } ->
+              Printf.printf "handler for speech!";
+              board.draw_text "speech_box" text_to_display;
+              None
+            | _ ->
+              None
+          )
+        ]
+      );
+
       get_viewports = (fun (fields : camera_fields) ->
         [({ layer = "main" ; pos = fields.pos ; scale = fields.scale })]) ;
   };

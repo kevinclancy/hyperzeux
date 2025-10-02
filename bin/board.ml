@@ -656,7 +656,34 @@ let update (board : t) : unit =
   StringMap.iter update_region_agent board.regions;
   StringMap.iter update_ambient_agent board.ambient_agents;
   StringMap.iter update_agent !(board.agents);
-  CameraAgent.resume board.camera dt
+  CameraAgent.resume board.camera dt;
+  CameraAgent.handle_messages board.camera
+
+let refresh_static_region (layers : layer StringMap.t) (region : region) : unit =
+  (** Refresh the static texture for all components of a region *)
+  let refresh_component (_ : string) (component : region_component) : unit =
+    let layer = StringMap.find component.layer layers in
+    let open Raylib in
+    begin_texture_mode layer.static_texture;
+      for x = component.left to component.right do
+        for y = component.top to component.bottom do
+          let cell = Array.get (Array.get layer.grid x) y in
+          let height_pixels = layer.height * Config.char_height in
+          let src_rect = rect 0.0 0.0 (Float.of_int Config.char_width) (Float.of_int @@ - Config.char_height) in
+          let dest_rect =
+            rect
+              (Float.of_int @@ x * Config.char_width)
+              (Float.of_int @@ height_pixels - ((y + 1) * Config.char_height))
+              (Float.of_int Config.char_width)
+              (Float.of_int Config.char_height)
+          in
+          let texture = TextureMap.get (!cell).static_object.texture_name in
+          draw_texture_pro texture src_rect dest_rect (Vector2.zero ()) 1.0 (!cell).static_object_color
+        done
+      done;
+    end_texture_mode ()
+  in
+  StringMap.iter refresh_component region.components
 
 let layer_from_blueprint (layer : Blueprint.layer) : layer =
   let open Raylib in
@@ -706,6 +733,12 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
   let open Agent in
   let layers = StringMap.map layer_from_blueprint blueprint.layers in
   let agents = ref StringMap.empty in
+  let set_static_object (pos : position) (static_obj_name : string) : unit =
+    let layer = StringMap.find pos.layer layers in
+    let static_obj = StaticObjectMap.get static_obj_name in
+    let cell = (Array.get (Array.get layer.grid pos.x) pos.y) in
+    cell := { !cell with static_object = static_obj }
+  in
   let board_intf : board_interface = {
       get_waypoint = (fun (name : string) ->
         StringMap.find name blueprint.waypoints
@@ -715,6 +748,9 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
       );
       get_puppet = (fun (name : string) ->
         Agent.puppet (fst (StringMap.find name !agents))
+      );
+      draw_text = (fun (region_name : string) (text : string) ->
+        Drawing.draw_text_in_region set_static_object (refresh_static_region layers) blueprint.regions region_name text
       );
   } in
   let create_ambient_agent (agent_bp : Blueprint.ambient_agent_blueprint) : AmbientAgent.t =

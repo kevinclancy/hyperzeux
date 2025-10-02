@@ -3,7 +3,7 @@ open BoardInterface
 open Common
 
 let script (board : board_interface) (puppet : PuppetExternal.t) =
-  let open Shared.Channels.Speech in
+  let open Shared.RegionScriptFunctions in
   say "hello world";
   say "goodbye world"
 

@@ -358,6 +358,26 @@ let () =
       Board.Blueprint.draw bp_edit_state camera_pos !scale ~hovered_waypoint ();
         (* let curr_obj_texture = TextureMap.get curr_object.texture_name in *)
       let edit_rect = edit_mode.draw bp_edit_state camera_pos !scale mouse_pos in
+
+      (* Display cell coordinates in bottom left corner *)
+      let layer_width = Board.Blueprint.get_width bp_edit_state in
+      let layer_height = Board.Blueprint.get_height bp_edit_state in
+      let contained_in_board (x : int) (y : int) =
+        x >= 0 && y >= 0 && x < layer_width && y < layer_height
+      in
+      let mouse_board_pos_for_display = get_mouse_boardpos camera_pos !scale in
+      if contained_in_board mouse_board_pos_for_display.x mouse_board_pos_for_display.y then begin
+        let x = mouse_board_pos_for_display.x in
+        let y = mouse_board_pos_for_display.y in
+        let inv_x = layer_width - x - 1 in
+        let inv_y = layer_height - y - 1 in
+        let coords_text = Printf.sprintf "(%d,%d)" x y in
+        let inv_coords_text = Printf.sprintf "(%d,%d)" inv_x inv_y in
+        let text_y = Config.screen_height - 25 in
+        Raylib.draw_text coords_text 10 text_y 20 Raylib.Color.white;
+        Raylib.draw_text inv_coords_text 100 text_y 20 (Raylib.color_alpha Raylib.Color.white 0.7)
+      end;
+
       end_drawing ();
 
       if not (((Vector2.x mouse_pos) >= Rectangle.x edit_rect)

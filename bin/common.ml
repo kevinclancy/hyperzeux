@@ -27,6 +27,12 @@ type position = {
   (** The row of the cell position *)
 }
 
+type direction =
+  | North
+  | East
+  | South
+  | West
+
 type vec2 = Raylib.Vector2.t
 
 type camera_transform = {

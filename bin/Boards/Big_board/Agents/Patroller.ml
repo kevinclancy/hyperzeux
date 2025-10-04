@@ -19,6 +19,8 @@ let walk_west (puppet : Puppet.t) =
   Puppet.set_texture puppet (TextureMap.get "person_west_recon.png");
   Actions.walk_west ()
 
+let walk_fns : Shared.AgentScriptFunctions.walk_functions = { walk_north ; walk_east ; walk_south; walk_west }
+
 let rec patrolling_state : unit AgentState.blueprint = {
   state_functions = {
     AgentState.empty_state_functions with
@@ -52,11 +54,8 @@ and freaking_out_state : unit AgentState.blueprint = {
   state_functions = {
     AgentState.empty_state_functions with
       script = Some (fun (board : board_interface) (me : Puppet.t) () ->
-        while true do
-          walk_north me;
-          walk_south me;
-          walk_south me;
-        done;
+        let open Shared.AgentScriptFunctions in
+        walk_to board "special_plant" walk_fns me
       );
       key_up_pressed = Some(fun (board : board_interface) (me : Puppet.t) () ->
         Some(AgentState.create patrolling_state ())

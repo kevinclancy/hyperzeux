@@ -736,6 +736,119 @@ let layer_from_blueprint (layer : Blueprint.layer) : layer =
     render_texture = load_render_texture (layer.width * Config.char_width) (layer.height * Config.char_height) ;
   }
 
+(* Position comparison for A* pathfinding maps *)
+module PosOrd = struct
+  type t = position
+  let compare (a : position) (b : position) =
+    match String.compare a.layer b.layer with
+    | 0 -> (match Int.compare a.x b.x with
+           | 0 -> Int.compare a.y b.y
+           | c -> c)
+    | c -> c
+end
+
+module PosMap = Map.Make(PosOrd)
+module PosSet = Set.Make(PosOrd)
+
+let a_star_pathfind (layers : layer StringMap.t) (start_pos : position) (end_pos : position) : direction list option =
+  (** A* pathfinding algorithm for grid-based movement *)
+
+  if start_pos.layer <> end_pos.layer then None
+  else if start_pos = end_pos then Some []
+  else
+    let layer = StringMap.find start_pos.layer layers in
+    let width = layer.width in
+    let height = layer.height in
+
+    let heuristic (pos : position) : int =
+      abs (pos.x - end_pos.x) + abs (pos.y - end_pos.y)
+    in
+
+    let is_walkable (pos : position) : bool =
+      if pos.x < 0 || pos.x >= width || pos.y < 0 || pos.y >= height then false
+      else
+        let cell = !(Array.get (Array.get layer.grid pos.x) pos.y) in
+        cell.static_object.traversable && Option.is_none cell.agent
+    in
+
+    let get_neighbors (pos : position) : (position * direction) list =
+      [
+        ({pos with y = pos.y - 1}, North);
+        ({pos with x = pos.x + 1}, East);
+        ({pos with y = pos.y + 1}, South);
+        ({pos with x = pos.x - 1}, West);
+      ]
+      |> List.filter (fun (p, _) -> is_walkable p)
+    in
+
+    (* Priority queue as a list sorted by f_score *)
+    let rec insert_pq (pq : (int * position) list) (f_score : int) (pos : position) : (int * position) list =
+      match pq with
+      | [] -> [(f_score, pos)]
+      | (f, p) :: rest ->
+        if f_score < f then (f_score, pos) :: pq
+        else (f, p) :: insert_pq rest f_score pos
+    in
+
+    (* Reconstruct path from came_from map *)
+    let rec reconstruct_path (came_from : (position * direction) PosMap.t) (current : position) : direction list =
+      match PosMap.find_opt current came_from with
+      | None -> []
+      | Some (prev_pos, dir) -> (reconstruct_path came_from prev_pos) @ [dir]
+    in
+
+    (* A* main loop *)
+    let rec a_star_loop
+      (open_set : (int * position) list)
+      (closed_set : PosSet.t)
+      (g_score : int PosMap.t)
+      (came_from : (position * direction) PosMap.t) : direction list option =
+
+      match open_set with
+      | [] -> None  (* No path found *)
+      | (_, current) :: rest_open ->
+        if current = end_pos then
+          Some (reconstruct_path came_from current)
+        else
+          let closed_set' = PosSet.add current closed_set in
+          let current_g = PosMap.find current g_score in
+
+          (* Process neighbors *)
+          let (new_open, new_g, new_came_from) =
+            List.fold_left
+              (fun (open_acc, g_acc, came_acc) (neighbor, dir) ->
+                if PosSet.mem neighbor closed_set' then
+                  (open_acc, g_acc, came_acc)
+                else
+                  let tentative_g = current_g + 1 in
+                  let neighbor_g = match PosMap.find_opt neighbor g_acc with
+                    | Some g -> g
+                    | None -> max_int
+                  in
+                  if tentative_g < neighbor_g then
+                    let f_score = tentative_g + heuristic neighbor in
+                    let open_acc' = insert_pq open_acc f_score neighbor in
+                    let g_acc' = PosMap.add neighbor tentative_g g_acc in
+                    let came_acc' = PosMap.add neighbor (current, dir) came_acc in
+                    (open_acc', g_acc', came_acc')
+                  else
+                    (open_acc, g_acc, came_acc)
+              )
+              (rest_open, g_score, came_from)
+              (get_neighbors current)
+          in
+
+          a_star_loop new_open closed_set' new_g new_came_from
+    in
+
+    (* Initialize and start A* *)
+    let initial_g = PosMap.singleton start_pos 0 in
+    let initial_open = [(heuristic start_pos, start_pos)] in
+    let initial_closed = PosSet.empty in
+    let initial_came_from = PosMap.empty in
+
+    a_star_loop initial_open initial_closed initial_g initial_came_from
+
 let create_from_blueprint (blueprint : Blueprint.t) : t =
   let open Raylib in
   let open Agent in
@@ -759,6 +872,9 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
       );
       draw_text = (fun (region_name : string) (text : string list) ->
         Drawing.draw_text_in_region set_static_object (refresh_static_region layers) blueprint.regions region_name text
+      );
+      get_path = (fun (start_pos : position) (end_pos : position) ->
+        a_star_pathfind layers start_pos end_pos
       );
   } in
   let create_ambient_agent (agent_bp : Blueprint.ambient_agent_blueprint) : AmbientAgent.t =

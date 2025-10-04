@@ -530,6 +530,18 @@ module Blueprint = struct
     let src = Rectangle.create 0.0 0.0 width (-. height) in
     let dest = Rectangle.create 0.0 0.0 (width *. scale) (height *. scale) in
     draw_texture_pro (RenderTexture.texture s.render_texture) src dest pos 0.0 Color.white;
+    (* Draw waypoint names over the board texture *)
+    let draw_waypoint_name (_ : string) (waypoint : waypoint) : unit =
+      if waypoint.position.layer = s.current_layer then begin
+        let cell_pos = { x = waypoint.position.x ; y = waypoint.position.y } in
+        let screen_pos = boardpos_top_left pos scale cell_pos in
+        let screen_x = Int.of_float (Vector2.x screen_pos) in
+        let screen_y = Int.of_float ((Vector2.y screen_pos) -. 12.0) in
+        let text_color = color_alpha Color.white 0.6 in
+        draw_text waypoint.name screen_x screen_y 14 text_color
+      end
+    in
+    StringMap.iter draw_waypoint_name s.blueprint.waypoints;
 end
 
 type grid_cell = {

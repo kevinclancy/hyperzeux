@@ -15,9 +15,11 @@ let rec hidden_state : unit AmbientAgentState.blueprint = {
         [
           Channel.attach_handler (Channels.Speech.speech) (fun speech_command board ->
             match speech_command with
-            | Channels.Speech.DisplaySpeech (text_to_display, is_finished) ->
+            | Channels.Speech.DisplaySpeech (lines, is_finished) ->
+              let text_to_display = String.concat "\n" lines in
               Some(AmbientAgentState.create visible_state (text_to_display, is_finished))
-            | Channels.Speech.BeginSpeech (text_to_display, is_finished) ->
+            | Channels.Speech.BeginSpeech (lines, is_finished) ->
+              let text_to_display = String.concat "\n" lines in
               Some(AmbientAgentState.create visible_state (text_to_display, is_finished))
             | _ ->
               None

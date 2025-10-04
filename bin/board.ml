@@ -757,7 +757,7 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
       get_puppet = (fun (name : string) ->
         Agent.puppet (fst (StringMap.find name !agents))
       );
-      draw_text = (fun (region_name : string) (text : string) ->
+      draw_text = (fun (region_name : string) (text : string list) ->
         Drawing.draw_text_in_region set_static_object (refresh_static_region layers) blueprint.regions region_name text
       );
   } in

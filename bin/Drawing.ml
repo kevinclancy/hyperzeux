@@ -1,10 +1,10 @@
 open Common
 open Region
 
-let draw_text_in_region (set_static_object : position -> string -> unit) (refresh_static : region -> unit) (regions : region StringMap.t) (region_name : string) (text_to_draw : string) : unit =
-  (** [draw_text_in_region set_static_object refresh_static regions region_name text_to_draw]
-      Draws [text_to_draw] into the region named [region_name],
-      starting from the top-left corner of the region and wrapping text as needed.
+let draw_text_in_region (set_static_object : position -> string -> unit) (refresh_static : region -> unit) (regions : region StringMap.t) (region_name : string) (lines : string list) : unit =
+  (** [draw_text_in_region set_static_object refresh_static regions region_name lines]
+      Draws [lines] into the region named [region_name],
+      starting from the top-left corner of the region with each string on a separate line.
 
       [set_static_object pos static_obj_name] sets the static object at position [pos] to the static object named [static_obj_name].
 
@@ -26,33 +26,33 @@ let draw_text_in_region (set_static_object : position -> string -> unit) (refres
   let current_x = ref start_x in
   let current_y = ref start_y in
 
-  String.iter
-    (fun c ->
-      let char_code = Char.code c in
+  List.iter
+    (fun line ->
+      if !current_y <= bottom_boundary then begin
+        String.iter
+          (fun c ->
+            let char_code = Char.code c in
+            if !current_y <= bottom_boundary && !current_x <= right_boundary then begin
+              let char_obj_name = String.concat "" ["ascii" ; Int.to_string char_code] in
+              set_static_object {layer = layer_name; x = !current_x; y = !current_y} char_obj_name;
+              current_x := !current_x + 1
+            end
+          )
+          line;
 
-      if char_code = 10 then begin
-        (* Fill rest of the current line with "blank" *)
+        (* Fill rest of the current line with "empty" *)
         while !current_x <= right_boundary do
           set_static_object {layer = layer_name; x = !current_x; y = !current_y} "empty";
           current_x := !current_x + 1
         done;
+
         current_x := start_x;
         current_y := !current_y + 1
       end
-      else if !current_y <= bottom_boundary then begin
-        let char_obj_name = String.concat "" ["ascii" ; Int.to_string char_code] in
-        set_static_object {layer = layer_name; x = !current_x; y = !current_y} char_obj_name;
-
-        current_x := !current_x + 1;
-        if !current_x > right_boundary then begin
-          current_x := start_x;
-          current_y := !current_y + 1
-        end
-      end
     )
-    text_to_draw;
+    lines;
 
-  (* Fill remaining cells in the region with "blank" *)
+  (* Fill remaining cells in the region with "empty" *)
   while !current_y <= bottom_boundary do
     while !current_x <= right_boundary && !current_y <= bottom_boundary do
       set_static_object {layer = layer_name; x = !current_x; y = !current_y} "empty";

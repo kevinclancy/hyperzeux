@@ -22,12 +22,12 @@ let state_speech : camera_fields CameraAgentState.blueprint = {
         [
           Channel.attach_handler speech (fun speech_command board ->
             match speech_command with
-            | DisplaySpeech (text_to_display, is_finished) ->
-              board.draw_text "speech_box" text_to_display;
+            | DisplaySpeech (lines, is_finished) ->
+              board.draw_text "speech_box" lines;
               fields.speech_state <- SpeechVisible(is_finished);
               None
-            | BeginSpeech (initial_text, is_finished) ->
-              board.draw_text "speech_box" initial_text;
+            | BeginSpeech (lines, is_finished) ->
+              board.draw_text "speech_box" lines;
               fields.speech_state <- SpeechVisible(is_finished);
               None
             | EndSpeech ->

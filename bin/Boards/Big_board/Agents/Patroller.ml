@@ -3,6 +3,8 @@ open Agent
 open AgentState
 open BoardInterface
 
+let name = "patroller"
+
 let walk_north (puppet : Puppet.t) =
   Puppet.set_texture puppet (TextureMap.get "person_north_recon.png");
   Actions.walk_north ()
@@ -20,6 +22,10 @@ let walk_west (puppet : Puppet.t) =
   Actions.walk_west ()
 
 let walk_fns : Shared.AgentScriptFunctions.walk_functions = { walk_north ; walk_east ; walk_south; walk_west }
+
+let acquire_kit =
+  let open Shared.AgentStateCreators in
+  AcquiredState.create name { walk_north ; walk_east ; walk_south ; walk_west }
 
 let rec patrolling_state : unit AgentState.blueprint = {
   state_functions = {
@@ -41,7 +47,12 @@ let rec patrolling_state : unit AgentState.blueprint = {
       );
       receive_bump = Some(fun (board : board_interface) (me : Puppet.t) () (other : PuppetExternal.t) ->
         Some(AgentState.create freaking_out_state ())
-      )
+      );
+      create_handlers = Some(fun () ->
+        [
+          acquire_kit.acquire_handler
+        ]
+      );
   };
 
   props = {
@@ -77,5 +88,5 @@ let patroller_class : agent_class = {
   preview_texture_name = "person_south_recon.png" ;
   preview_color = Raylib.Color.white ;
   speed = 0.3 ;
-  name = "patroller"
-}
+  name
+} |> acquire_kit.add_acquire_state

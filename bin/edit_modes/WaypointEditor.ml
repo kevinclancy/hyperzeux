@@ -98,7 +98,7 @@ let draw (waypoint_editor : t) (edit_state : Board.Blueprint.edit_state) : Rayli
   let (new_text, edit_mode) = Raygui.text_box_multi
     desc_box
     waypoint_editor.description_text
-    true
+    (waypoint_editor.selected_index <> -1)
   in
   waypoint_editor.description_text <- new_text;
 

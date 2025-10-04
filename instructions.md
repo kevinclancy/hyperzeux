@@ -20,12 +20,13 @@
 
 ## Editor modes
 
-* 1 - Static object mode
-* 2 - Agent mode
-* 3 - Region editor
-* 4 - Draw text mode
-* 6 - Line draw mode
-* 7 - Layer manager mode
+* Alt-1 - Static object mode
+* Alt-2 - Agent mode
+* Alt-3 - Region editor
+* Alt-4 - Draw text mode
+* Alt-6 - Line draw mode
+* Alt-7 - Layer manager mode
+* Alt-8 - Waypoint editor
 
 ## Play
 

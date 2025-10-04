@@ -300,21 +300,21 @@ let () =
         ()
       else if is_key_down Key.Left_control && is_key_pressed Key.P then
         game_state := Playing (Board.create_from_blueprint @@ Board.Blueprint.get_blueprint bp_edit_state)
-      else if is_key_pressed Key.One then
+      else if is_key_down Key.Left_alt && is_key_pressed Key.One then
         edit_state.edit_mode <- edit_state.object_selector_mode
-      else if is_key_pressed Key.Two then
+      else if is_key_down Key.Left_alt && is_key_pressed Key.Two then
         edit_state.edit_mode <- edit_state.agent_selector_mode
-      else if is_key_pressed Key.Three then
+      else if is_key_down Key.Left_alt && is_key_pressed Key.Three then
         edit_state.edit_mode <- edit_state.region_editor_mode
-      else if is_key_pressed Key.Four then
+      else if is_key_down Key.Left_alt && is_key_pressed Key.Four then
         edit_state.edit_mode <- edit_state.ambient_selector_mode
-      else if is_key_pressed Key.Five then
+      else if is_key_down Key.Left_alt && is_key_pressed Key.Five then
         edit_state.edit_mode <- edit_state.text_writer_mode
-      else if is_key_pressed Key.Six then
+      else if is_key_down Key.Left_alt && is_key_pressed Key.Six then
         edit_state.edit_mode <- edit_state.line_drawer_mode
-      else if is_key_pressed Key.Seven then
+      else if is_key_down Key.Left_alt && is_key_pressed Key.Seven then
         edit_state.edit_mode <- edit_state.layer_editor_mode
-      else if is_key_pressed Key.Eight then
+      else if is_key_down Key.Left_alt && is_key_pressed Key.Eight then
         edit_state.edit_mode <- edit_state.waypoint_editor_mode
       else if (is_key_pressed Key.O) && (is_key_down Key.Left_control) then
         begin

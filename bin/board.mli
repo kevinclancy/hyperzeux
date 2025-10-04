@@ -1,6 +1,18 @@
 open Common
 open Region
 
+type waypoint = {
+    name : string ;
+    (** the name of the waypoint *)
+
+    position : position ;
+    (** the position of the waypoint *)
+
+    description : string ;
+    (** the description of the waypoint *)
+}
+
+
 module Blueprint : sig
     type t
     (** A static specification of a board's starting state,
@@ -57,15 +69,21 @@ module Blueprint : sig
     val remove_ambient_agent : t -> string -> unit
     (** [remove_ambient_agent] *)
 
-    val add_waypoint : edit_state -> string -> pre_position -> unit
-    (** [add_waypoint blueprint waypoint_name waypoint_position]
-        Adds a waypoint named [waypoint_name] at position [waypoint_position] *)
+    val add_waypoint : edit_state -> string -> pre_position -> string -> unit
+    (** [add_waypoint blueprint waypoint_name waypoint_position description]
+        Adds a waypoint named [waypoint_name] at position [waypoint_position] with description [description] *)
 
     val contains_pos : edit_state -> pre_position -> bool
     (** [contains_pos blueprint pos] Returns true iff [pos] is a valid cell position of [blueprint] *)
 
     val contains_waypoint_name : edit_state -> string -> bool
     (** [contains_waypoint_name blueprint name] *)
+
+    val get_waypoints : edit_state -> waypoint StringMap.t
+    (** Get the blueprint's map from waypoint name to waypoint *)
+
+    val set_waypoints : edit_state -> waypoint StringMap.t -> unit
+    (** Set the blueprint's map from waypoint name to waypoint *)
 
     val contains_agent_name : edit_state -> string -> bool
     (** [contains_agent_name blueprint name] returns true iff this board blueprint

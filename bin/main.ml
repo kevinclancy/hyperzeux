@@ -20,6 +20,7 @@ type selector_name =
   | TextWriter
   | LineDrawer
   | LayerEditor
+  | WaypointEditor
 
 type editor_mode = {
   (** A selector for the current type of object we are placing in the
@@ -81,6 +82,9 @@ type edit_state = {
   text_writer_mode : editor_mode ;
 
   layer_editor_mode : editor_mode ;
+
+  waypoint_editor : WaypointEditor.t ;
+  waypoint_editor_mode : editor_mode ;
 }
 
 type game_state =
@@ -112,6 +116,7 @@ let create_edit_state (bp_edit_state : Board.Blueprint.edit_state) : edit_state 
   let text_writer = TextWriter.create () in
   let line_drawer = LineDrawer.create () in
   let layer_editor = LayerEditor.create () in
+  let waypoint_editor = WaypointEditor.create () in
   (** Begin using the static object selector *)
   let object_selector_mode : editor_mode =
     let open ObjectSelector in
@@ -199,6 +204,18 @@ let create_edit_state (bp_edit_state : Board.Blueprint.edit_state) : edit_state 
       mouse_released_left = (fun _ _ -> ())
     }
   in
+  let waypoint_editor_mode : editor_mode =
+    let open WaypointEditor in
+    {
+      name = WaypointEditor ;
+      draw = (fun edit_state _ _ _ -> draw waypoint_editor edit_state) ;
+      handle_keypress = (fun _ -> false) ;
+      handle_keypress_pos = (fun _ _ -> false);
+      mouse_click_left = (fun edit_state cursor_cell_pos _ _ -> instantiate waypoint_editor edit_state cursor_cell_pos) ;
+      mouse_down_left = (fun _ _ -> ()) ;
+      mouse_released_left = (fun _ _ -> ())
+    }
+  in
   {
     bp_edit_state ;
     camera_pos = Vector2.create 0.0 0.0 ;
@@ -221,6 +238,9 @@ let create_edit_state (bp_edit_state : Board.Blueprint.edit_state) : edit_state 
 
     text_writer_mode ;
     layer_editor_mode ;
+
+    waypoint_editor ;
+    waypoint_editor_mode ;
   }
 
 let () =
@@ -294,6 +314,8 @@ let () =
         edit_state.edit_mode <- edit_state.line_drawer_mode
       else if is_key_pressed Key.Seven then
         edit_state.edit_mode <- edit_state.layer_editor_mode
+      else if is_key_pressed Key.Eight then
+        edit_state.edit_mode <- edit_state.waypoint_editor_mode
       else if (is_key_pressed Key.O) && (is_key_down Key.Left_control) then
         begin
           let opt_obj = get_static_obj () in
@@ -317,18 +339,7 @@ let () =
       else if (is_key_pressed Key.S) && (is_key_down Key.Left_alt) then
         save_board (Board.Blueprint.get_blueprint bp_edit_state)
       else if (is_key_pressed Key.O) && (is_key_down Key.Left_alt) then
-        load_board ()
-      else if (is_key_pressed Key.W) then
-        begin
-        let {x;y} : pre_position = get_mouse_boardpos camera_pos !scale in
-        if x >= 0 && y >= 0 && x < Config.board_cells_width && y < Config.board_cells_height then
-          let opt_name = GuiTools.get_new_name "Enter new waypoint name" (Board.Blueprint.contains_waypoint_name bp_edit_state) in
-          match opt_name with
-          | Some(name) ->
-              Board.Blueprint.add_waypoint bp_edit_state name {x;y};
-          | None ->
-            ()
-        end;
+        load_board ();
 
       let mouse_pos = Raylib.get_mouse_position () in
       Board.Blueprint.draw_prep bp_edit_state;

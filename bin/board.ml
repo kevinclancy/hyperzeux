@@ -7,6 +7,17 @@ let region_colors =
     (fun c -> Raylib.color_alpha c 0.12)
     Raylib.[| Color.blue ; Color.brown ; Color.green ; Color.magenta ; Color.gold ; Color.purple ; Color.orange ; Color.pink |]
 
+type waypoint = {
+  name : string ;
+  (** the name of the waypoint *)
+
+  position : position ;
+  (** the position of the waypoint *)
+
+  description : string ;
+  (** the description of the waypoint *)
+}
+
 module Blueprint = struct
   type ambient_agent_blueprint = {
     agent_class_name : string ;
@@ -31,14 +42,6 @@ module Blueprint = struct
   type static_object_blueprint = {
     name : string ;
     color : Raylib.Color.t
-  }
-
-  type waypoint = {
-    name : string ;
-    (** the name of the waypoint *)
-
-    position : position ;
-    (** the position of the waypoint *)
   }
 
   type layer = {
@@ -69,8 +72,8 @@ module Blueprint = struct
     mutable ambient_agents : ambient_agent_blueprint StringMap.t ;
     (** For each ambient agent in the board's starting state, maps ambient agent name to a blueprint *)
 
-    mutable waypoints : position StringMap.t ;
-    (** Maps waypoint names to waypoint positions *)
+    mutable waypoints : waypoint StringMap.t ;
+    (** Maps waypoint names to waypoints *)
 
     mutable regions : region StringMap.t ;
     (** Maps each region name to the region *)
@@ -206,7 +209,7 @@ module Blueprint = struct
     bp.agents <- StringMap.filter (fun _ agent_bp -> agent_bp.pos <> pos) bp.agents
 
   let remove_waypoint_at (bp : t) (pos : position) : unit =
-    bp.waypoints <- StringMap.filter (fun _ waypoint_pos -> waypoint_pos <> pos) bp.waypoints
+    bp.waypoints <- StringMap.filter (fun _ waypoint -> waypoint.position <> pos) bp.waypoints
 
   let add_agent_bp (bp : t) (agent_name : string) (color : Raylib.Color.t) (agent_class_name : string) (texture_name : string) (pos : position) =
     assert (StaticObjectMap.get (!(get_static_object_ref bp pos)).name).traversable;
@@ -235,6 +238,12 @@ module Blueprint = struct
   let contains_waypoint_name (s : edit_state) (waypoint_name : string) : bool =
     StringMap.mem waypoint_name s.blueprint.waypoints
 
+  let get_waypoints (s : edit_state) : waypoint StringMap.t =
+    s.blueprint.waypoints
+
+  let set_waypoints (s : edit_state) (waypoints : waypoint StringMap.t) : unit =
+    s.blueprint.waypoints <- waypoints
+
   let contains_agent_name (edit_state : edit_state) (agent_name : string) : bool =
     StringMap.mem agent_name edit_state.blueprint.agents
 
@@ -256,12 +265,13 @@ module Blueprint = struct
   let del_region (s : edit_state) (name :string) =
     s.blueprint.regions <- StringMap.remove name s.blueprint.regions
 
-  let add_waypoint (s : edit_state) (waypoint_name : string) (pos : pre_position) : unit =
+  let add_waypoint (s : edit_state) (waypoint_name : string) (pos : pre_position) (description : string) : unit =
     let pos' = { layer = s.current_layer; x = pos.x; y = pos.y } in
     assert (StaticObjectMap.get (!(get_static_object_ref s.blueprint pos')).name).traversable;
     assert (not @@ contains_waypoint_name s waypoint_name);
     remove_waypoint_at s.blueprint pos';
-    s.blueprint.waypoints <- StringMap.add waypoint_name pos' s.blueprint.waypoints
+    let waypoint = { name = waypoint_name ; position = pos' ; description } in
+    s.blueprint.waypoints <- StringMap.add waypoint_name waypoint s.blueprint.waypoints
 
   let output_binary_string (chan : out_channel) (s : string) : unit =
     output_binary_int chan (String.length s);
@@ -301,6 +311,23 @@ module Blueprint = struct
   let output_ambient_agent (chan : out_channel) (agent_name : string) (agent : ambient_agent_blueprint) : unit =
     output_binary_string chan agent.agent_class_name;
     output_binary_string chan agent.agent_name
+
+  let output_waypoint (chan : out_channel) (waypoint_name : string) (waypoint : waypoint) : unit =
+    output_binary_string chan waypoint.name;
+    output_binary_string chan waypoint.position.layer;
+    output_binary_int chan waypoint.position.x;
+    output_binary_int chan waypoint.position.y;
+    output_binary_string chan waypoint.description
+
+  let input_waypoint (chan : in_channel) : string * waypoint =
+    (** Returns pair of (waypoint name, waypoint) *)
+    let name = input_binary_string chan in
+    let layer = input_binary_string chan in
+    let x = input_binary_int chan in
+    let y = input_binary_int chan in
+    let description = input_binary_string chan in
+    let waypoint = { name ; position = { layer ; x ; y } ; description } in
+    name, waypoint
 
   let output_region_component (chan : out_channel) (component_name : string) (component : region_component) : unit =
     output_binary_string chan component_name;
@@ -396,6 +423,8 @@ module Blueprint = struct
     StringMap.iter (output_agent chan) bp.agents;
     output_binary_int chan (StringMap.cardinal bp.ambient_agents);
     StringMap.iter (output_ambient_agent chan) bp.ambient_agents;
+    output_binary_int chan (StringMap.cardinal bp.waypoints);
+    StringMap.iter (output_waypoint chan) bp.waypoints;
     output_binary_int chan (StringMap.cardinal bp.regions);
     StringMap.iter (output_region chan) bp.regions;
     close_out chan
@@ -417,6 +446,11 @@ module Blueprint = struct
     for i = 0 to num_ambient_agents - 1 do
       let agent = input_ambient_agent chan in
       add_ambient_agent_bp result_bp agent.agent_name agent.agent_class_name;
+    done;
+    let num_waypoints = input_binary_int chan in
+    for i = 0 to num_waypoints - 1 do
+      let waypoint_name, waypoint = input_waypoint chan in
+      result_bp.waypoints <- StringMap.add waypoint_name waypoint result_bp.waypoints;
     done;
     let num_regions = input_binary_int chan in
     for i = 0 to num_regions - 1 do
@@ -449,9 +483,9 @@ module Blueprint = struct
             draw_texture_ex texture pos 0.0 1.0 agent_blueprint.color
           end
         in
-        let draw_waypoint (_ : string) (waypoint : position) : unit =
-          if waypoint.layer = s.current_layer then begin
-            let { x ; y } = waypoint in
+        let draw_waypoint (_ : string) (waypoint : waypoint) : unit =
+          if waypoint.position.layer = s.current_layer then begin
+            let { x ; y } = waypoint.position in
             let pos = Vector2.create (Float.of_int @@ x * Config.char_width) (Float.of_int @@ y * Config.char_height) in
             let texture = TextureMap.get "waypoint.png" in
             draw_texture_ex texture pos 0.0 1.0 Raylib.Color.green
@@ -537,7 +571,7 @@ type t = {
   mutable ambient_agents : AmbientAgent.t StringMap.t ;
   (** Maps each ambient agent name to an ambient agent *)
 
-  mutable waypoints : position StringMap.t ;
+  mutable waypoints : waypoint StringMap.t ;
   (** Maps each waypoint name to position *)
 }
 
@@ -862,7 +896,7 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
   in
   let board_intf : board_interface = {
       get_waypoint = (fun (name : string) ->
-        StringMap.find name blueprint.waypoints
+        (StringMap.find name blueprint.waypoints).position
       );
       get_region = (fun (name : string) ->
         StringMap.find name blueprint.regions

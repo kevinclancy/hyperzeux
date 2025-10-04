@@ -49,7 +49,7 @@ let state_speech : camera_fields CameraAgentState.blueprint = {
       get_viewports = (fun (fields : camera_fields) ->
         match fields.speech_state with
         | SpeechVisible(_) ->
-          [({ layer = "user_interface" ; pos = vec2 0. 0. ; scale = 3. })]
+          [({ layer = "speech_box" ; pos = vec2 0. 0. ; scale = 3. })]
         | NoSpeechVisible ->
           []
       ) ;

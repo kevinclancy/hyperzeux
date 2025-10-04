@@ -149,3 +149,19 @@ let instantiate (waypoint_editor : t) (edit_state : Board.Blueprint.edit_state) 
     waypoint_editor.description_text <- ""
   | None ->
     ()
+
+let select_waypoint (waypoint_editor : t) (edit_state : Board.Blueprint.edit_state) (waypoint_name : string) : unit =
+  (** Selects the waypoint with the given name in the editor *)
+  let waypoint_names = get_waypoint_names edit_state in
+  let rec find_index lst idx =
+    match lst with
+    | [] -> -1
+    | h :: t -> if h = waypoint_name then idx else find_index t (idx + 1)
+  in
+  let index = find_index waypoint_names 0 in
+  if index <> -1 then begin
+    waypoint_editor.selected_index <- index;
+    let waypoints = Board.Blueprint.get_waypoints edit_state in
+    let waypoint = StringMap.find waypoint_name waypoints in
+    waypoint_editor.description_text <- waypoint.description
+  end

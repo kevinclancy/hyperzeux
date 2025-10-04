@@ -111,8 +111,11 @@ module Blueprint : sig
     val draw_prep : edit_state -> unit
     (** [draw_prep blueprint] Draws board components to a render texture in preparation for drawing *)
 
-    val draw : edit_state -> Raylib.Vector2.t -> float -> unit
-    (** [draw blueprint pos scale] *)
+    val draw : edit_state -> Raylib.Vector2.t -> float -> ?hovered_waypoint:string option -> unit -> unit
+    (** [draw blueprint pos scale ?hovered_waypoint ()] *)
+
+    val get_waypoint_at_pos : edit_state -> pre_position -> string option
+    (** [get_waypoint_at_pos s pos] Returns the name of the waypoint at position [pos] if one exists *)
 
     val bp_to_edit_state : t -> edit_state
     (** [bp_to_edit_state bp] converts bp to an edit state *)

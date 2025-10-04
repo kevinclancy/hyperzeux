@@ -520,8 +520,8 @@ module Blueprint = struct
         draw_texture_pro (RenderTexture.texture current_layer.grid_texture) src dest (Vector2.zero ()) 0.0 Color.white;
       end_texture_mode ()
 
-  (** [draw blueprint pos scale] *)
-  let draw (s : edit_state) (pos : Raylib.Vector2.t) (scale : float) : unit =
+  (** [draw blueprint pos scale ?hovered_waypoint ()] *)
+  let draw (s : edit_state) (pos : Raylib.Vector2.t) (scale : float) ?(hovered_waypoint : string option = None) () : unit =
     let open Raylib in
     clear_background Color.gray;
     let current_layer = get_current_layer s in
@@ -531,17 +531,35 @@ module Blueprint = struct
     let dest = Rectangle.create 0.0 0.0 (width *. scale) (height *. scale) in
     draw_texture_pro (RenderTexture.texture s.render_texture) src dest pos 0.0 Color.white;
     (* Draw waypoint names over the board texture *)
-    let draw_waypoint_name (_ : string) (waypoint : waypoint) : unit =
+    let draw_waypoint_name (name : string) (waypoint : waypoint) : unit =
       if waypoint.position.layer = s.current_layer then begin
         let cell_pos = { x = waypoint.position.x ; y = waypoint.position.y } in
         let screen_pos = boardpos_top_left pos scale cell_pos in
         let screen_x = Int.of_float (Vector2.x screen_pos) in
         let screen_y = Int.of_float ((Vector2.y screen_pos) -. 12.0) in
-        let text_color = color_alpha Color.white 0.6 in
+        let is_hovered = match hovered_waypoint with
+          | Some hovered_name -> hovered_name = name
+          | None -> false
+        in
+        let text_color = if is_hovered then Color.white else color_alpha Color.white 0.6 in
         draw_text waypoint.name screen_x screen_y 14 text_color
       end
     in
-    StringMap.iter draw_waypoint_name s.blueprint.waypoints;
+    StringMap.iter draw_waypoint_name s.blueprint.waypoints
+
+  let get_waypoint_at_pos (s : edit_state) (pos : pre_position) : string option =
+    (** Returns the name of the waypoint at the given position, if one exists *)
+    let matching_waypoint = StringMap.filter
+      (fun _ waypoint ->
+        waypoint.position.layer = s.current_layer &&
+        waypoint.position.x = pos.x &&
+        waypoint.position.y = pos.y)
+      s.blueprint.waypoints
+    in
+    if StringMap.is_empty matching_waypoint then
+      None
+    else
+      Some (fst (StringMap.min_binding matching_waypoint))
 end
 
 type grid_cell = {

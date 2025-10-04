@@ -300,21 +300,21 @@ let () =
         ()
       else if is_key_down Key.Left_control && is_key_pressed Key.P then
         game_state := Playing (Board.create_from_blueprint @@ Board.Blueprint.get_blueprint bp_edit_state)
-      else if is_key_down Key.Left_alt && is_key_pressed Key.One then
+      else if is_key_down Key.Left_control && is_key_pressed Key.One then
         edit_state.edit_mode <- edit_state.object_selector_mode
-      else if is_key_down Key.Left_alt && is_key_pressed Key.Two then
+      else if is_key_down Key.Left_control && is_key_pressed Key.Two then
         edit_state.edit_mode <- edit_state.agent_selector_mode
-      else if is_key_down Key.Left_alt && is_key_pressed Key.Three then
+      else if is_key_down Key.Left_control && is_key_pressed Key.Three then
         edit_state.edit_mode <- edit_state.region_editor_mode
-      else if is_key_down Key.Left_alt && is_key_pressed Key.Four then
+      else if is_key_down Key.Left_control && is_key_pressed Key.Four then
         edit_state.edit_mode <- edit_state.ambient_selector_mode
-      else if is_key_down Key.Left_alt && is_key_pressed Key.Five then
+      else if is_key_down Key.Left_control && is_key_pressed Key.Five then
         edit_state.edit_mode <- edit_state.text_writer_mode
-      else if is_key_down Key.Left_alt && is_key_pressed Key.Six then
+      else if is_key_down Key.Left_control && is_key_pressed Key.Six then
         edit_state.edit_mode <- edit_state.line_drawer_mode
-      else if is_key_down Key.Left_alt && is_key_pressed Key.Seven then
+      else if is_key_down Key.Left_control && is_key_pressed Key.Seven then
         edit_state.edit_mode <- edit_state.layer_editor_mode
-      else if is_key_down Key.Left_alt && is_key_pressed Key.Eight then
+      else if is_key_down Key.Left_control && is_key_pressed Key.Eight then
         edit_state.edit_mode <- edit_state.waypoint_editor_mode
       else if (is_key_pressed Key.O) && (is_key_down Key.Left_control) then
         begin
@@ -344,8 +344,18 @@ let () =
       let mouse_pos = Raylib.get_mouse_position () in
       Board.Blueprint.draw_prep bp_edit_state;
         (* (region_editor : t) (bp : Board.Blueprint.t) (cursor_cell_pos : position) (camera_pos : vec2) (scale : float) *)
+
+      (* Check if mouse is over a waypoint when in waypoint mode *)
+      let mouse_board_pos = get_mouse_boardpos camera_pos !scale in
+      let hovered_waypoint =
+        if edit_mode.name = WaypointEditor then
+          Board.Blueprint.get_waypoint_at_pos bp_edit_state mouse_board_pos
+        else
+          None
+      in
+
       begin_drawing ();
-      Board.Blueprint.draw bp_edit_state camera_pos !scale;
+      Board.Blueprint.draw bp_edit_state camera_pos !scale ~hovered_waypoint ();
         (* let curr_obj_texture = TextureMap.get curr_object.texture_name in *)
       let edit_rect = edit_mode.draw bp_edit_state camera_pos !scale mouse_pos in
       end_drawing ();
@@ -367,6 +377,15 @@ let () =
 
           if Raylib.is_mouse_button_down MouseButton.Left && contained_in_board mouse_cell_x mouse_cell_y then
             edit_mode.mouse_down_left bp_edit_state {x = mouse_cell_x ; y = mouse_cell_y};
+
+          (* Handle right-click on waypoints in waypoint mode *)
+          if Raylib.is_mouse_button_pressed MouseButton.Right && edit_mode.name = WaypointEditor then
+            begin
+              match hovered_waypoint with
+              | Some waypoint_name ->
+                WaypointEditor.select_waypoint edit_state.waypoint_editor bp_edit_state waypoint_name
+              | None -> ()
+            end;
 
           ignore @@ edit_mode.handle_keypress_pos bp_edit_state {x = mouse_cell_x ; y = mouse_cell_y};
         end

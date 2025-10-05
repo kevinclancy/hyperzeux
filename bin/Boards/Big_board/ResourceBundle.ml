@@ -43,6 +43,7 @@ let resources : ResourceBundleMap.resource_bundle_def = {
     Shared.Agents.Player.player_class
   ] ;
   ambient_agent_classes = [
+    Shared.AmbientAgents.Maestro.maestro_class
   ] ;
   region_agent_classes = [
     Agents.HotSpot.hotspot_class

@@ -25,7 +25,7 @@ let walk_fns : Shared.AgentScriptFunctions.walk_functions = { walk_north ; walk_
 
 let acquire_kit =
   let open Shared.AgentStateCreators in
-  AcquiredState.create name {
+  AcquiredState.create Channels.ruffian_sees_greencup {
     walk_north ;
     walk_east ;
     walk_south ;
@@ -85,6 +85,8 @@ and freaking_out_state : unit AgentState.blueprint = {
     name = "Freaking Out"
   }
 }
+
+let () = acquire_kit.set_return_state (AgentState.create patrolling_state ())
 
 let patroller_class : agent_class = {
   states = StringMap.of_list [

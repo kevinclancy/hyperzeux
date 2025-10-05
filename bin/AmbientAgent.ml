@@ -9,8 +9,6 @@ type ambient_agent_class = {
   initial_state : AmbientAgentState.t ;
   (** The state that the agent starts out in *)
 
-  speed : float ;
-
   name : string ;
   (** The name of the agent class *)
 }
@@ -24,12 +22,6 @@ type t = {
 
   mutable agent_state : AmbientAgentState.t ;
   (** The current scripts and set of callbacks used by this agent *)
-
-  speed : float ref ;
-  (** speed in actions per second, should be at most 1.0 *)
-
-  action_meter : float ref ;
-  (** percentage of wait completed before next action is allowed *)
 }
 
 let create (board : board_interface)
@@ -39,8 +31,6 @@ let create (board : board_interface)
     name = agent_class.name;
     board ;
     agent_state = agent_class.initial_state ;
-    action_meter = ref 0.;
-    speed  = ref agent_class.speed;
   }
 
 let draw (agent : t) : unit =
@@ -78,16 +68,7 @@ let update_input (agent : t) : unit =
   Option.iter (fun state -> agent.agent_state <- state) opt_new_state
 
 let rec resume (agent : t) : unit =
-  let open Effect.Deep in
-  let open Actions in
-  agent.action_meter := !(agent.action_meter) +. (Raylib.get_frame_time ()) *. !(agent.speed) *. Config.speed;
-  if !(agent.action_meter) > 1.0 then
-    begin
-      agent.action_meter := !(agent.action_meter) -. (Float.round !(agent.action_meter));
-      AmbientAgentState.resume agent.agent_state agent.board
-    end
-  else
-    ()
+  AmbientAgentState.resume agent.agent_state agent.board
 
 let handle_messages (agent : t) : unit =
   match AmbientAgentState.handle_messages agent.agent_state agent.board with

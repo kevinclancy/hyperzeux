@@ -18,8 +18,10 @@ let end_speech () : unit =
   let open Channels.Speech in
   Channel.send_msg speech EndSpeech
 
-let acquire (agent_name : string) : AgentStateCreators.AcquiredState.command_channel =
-  let acquire_channel = AgentStateCreators.AcquiredState.get_acquire_channel agent_name in
+let acquire (acquire_channel : AgentStateCreators.AcquiredState.acquire_msg Channel.t) : AgentStateCreators.AcquiredState.command_channel =
+  (** [acquire acquire_channel] acquires an agent by sending a message on its acquire channel.
+      Returns the command channel for sending commands to the acquired agent. *)
+
   let ref_opt_command_channel = ref None in
   Channel.send_msg acquire_channel ref_opt_command_channel;
   while Option.is_none !ref_opt_command_channel do
@@ -35,8 +37,9 @@ let send_command
   (** [send_command command_channel script_fn] sends a command along a command channel,
       and returns a reference that becomes true when the command has finished executing *)
 
+  let open AgentStateCreators.AcquiredState in
   let is_finished = ref false in
-  Channel.send_msg command_channel (script_fn, is_finished);
+  Channel.send_msg command_channel (Command (script_fn, is_finished));
   is_finished
 
 let perform_command
@@ -53,6 +56,54 @@ let perform_command
   done;
   ()
 
+let unacquire (command_channel : AgentStateCreators.AcquiredState.command_channel) : unit =
+  (** [unacquire command_channel] releases the acquired agent, returning it to its return state *)
+
+  let open AgentStateCreators.AcquiredState in
+  let is_finished = ref false in
+  Channel.send_msg command_channel (Release is_finished);
+  while not !is_finished do
+    ignore (Effect.perform @@ RegionAgentState.RegionAction ())
+  done;
+  ()
+
+let with_acquired
+  (acquire_channels : AgentStateCreators.AcquiredState.acquire_msg Channel.t list)
+  (f : AgentStateCreators.AcquiredState.command_channel list -> unit)
+  : unit =
+  (** [with_acquired acquire_channels f] acquires multiple agents by their acquire channels, calls [f] with their command channels,
+      and automatically releases all agents when [f] completes (even if an exception occurs).
+      The command channels are provided to [f] in the same order as the acquire channels. *)
+
+  let command_channels = List.map acquire acquire_channels in
+  Fun.protect
+    ~finally:(fun () -> List.iter unacquire command_channels)
+    (fun () -> f command_channels)
 
 let set_state (s : RegionAgentState.t) : unit =
   raise (RegionAgentState.ChangeState s)
+
+let play_music_fade_in (filename : string) (fade_duration : float) : unit =
+  (** [play_music_fade_in filename fade_duration] loads and plays a music file with a fade-in effect. *)
+
+  let open Channels.Music in
+  let is_finished = ref false in
+  Channel.send_msg music (PlaySong filename);
+  Channel.send_msg music (PerformFade (0.0, 1.0, fade_duration, is_finished))
+
+let start_music (filename : string) : unit =
+  (** [start_music filename fade_duration] starts playing the mp3 at [filename]. *)
+
+  let open Channels.Music in
+  Channel.send_msg music (PlaySong filename)
+
+let stop_music_fade_out (fade_duration : float) : unit =
+  (** [stop_music_fade_out fade_duration] fades out and stops the music. *)
+
+  let open Channels.Music in
+  let is_finished = ref false in
+  Channel.send_msg music (PerformFade (1.0, 0.0, fade_duration, is_finished));
+  while not !is_finished do
+    ignore (Effect.perform @@ RegionAgentState.RegionAction ())
+  done;
+  Channel.send_msg music StopSong

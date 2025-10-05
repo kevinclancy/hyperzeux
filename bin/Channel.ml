@@ -51,3 +51,6 @@ let handle_one (handler : ('res, 'handle_args) t_in_handler) (args : 'handle_arg
 
 let is_empty (handler : ('res, 'handle_args) t_in_handler) : bool =
   handler.is_empty ()
+
+let get_name (channel : 'msg t) : string =
+  channel.name

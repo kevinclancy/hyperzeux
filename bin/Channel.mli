@@ -23,3 +23,6 @@ val handle_one : ('res, 'handle_args) t_in_handler -> 'handle_args -> 'res
 
 val is_empty : ('res, 'handle_args) t_in_handler -> bool
 (** [is_empty handler] Return true if there are no messages waiting in [handler] to be handled *)
+
+val get_name : 'msg t -> string
+(** [get_name channel] Returns the name of the channel *)

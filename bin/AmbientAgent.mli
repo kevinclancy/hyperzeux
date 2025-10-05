@@ -11,8 +11,6 @@ type ambient_agent_class = {
   initial_state : AmbientAgentState.t ;
   (** The state that the agent starts out in *)
 
-  speed : float ;
-
   name : string ;
   (** The name of the agent class *)
 }

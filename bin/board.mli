@@ -108,6 +108,18 @@ module Blueprint : sig
     val del_region : edit_state -> string -> unit
     (** [del_region state region_name] Deletes region with specified name *)
 
+    val path_names : edit_state -> string list
+    (** [path_names s] Return a list of all path names in the currently edited blueprint *)
+
+    val get_path : edit_state -> string -> Path.path
+    (** [get_path s path_name] Returns the path in the currently edited blueprint whose name is [path_name] *)
+
+    val add_path : edit_state -> string -> Path.path -> unit
+    (** [add_path s path_name path] Adds [path] with name [path_name] to path map *)
+
+    val del_path : edit_state -> string -> unit
+    (** [del_path state path_name] Deletes path with specified name *)
+
     val draw_prep : edit_state -> unit
     (** [draw_prep blueprint] Draws board components to a render texture in preparation for drawing *)
 

@@ -16,6 +16,7 @@ type selector_name =
   | AgentSelector
   | StaticObjectSelector
   | RegionEditor
+  | PathEditor
   | AmbientAgentList
   | TextWriter
   | LineDrawer
@@ -74,6 +75,9 @@ type edit_state = {
   region_editor : RegionEditor.t ;
   region_editor_mode : editor_mode ;
 
+  path_editor : PathEditor.t ;
+  path_editor_mode : editor_mode ;
+
   line_drawer : LineDrawer.t ;
   line_drawer_mode : editor_mode ;
 
@@ -112,6 +116,7 @@ let create_edit_state (bp_edit_state : Board.Blueprint.edit_state) : edit_state 
   let object_selector = ObjectSelector.create () in
   let agent_selector = AgentClassSelector.create () in
   let region_editor = RegionEditor.create () in
+  let path_editor = PathEditor.create () in
   let ambient_selector = AmbientClassSelector.create () in
   let text_writer = TextWriter.create () in
   let line_drawer = LineDrawer.create () in
@@ -164,6 +169,18 @@ let create_edit_state (bp_edit_state : Board.Blueprint.edit_state) : edit_state 
       handle_keypress = (fun _ -> false) ;
       handle_keypress_pos = (fun _ _ -> false);
       mouse_click_left = (fun edit_state cell_pos camera_pos scale-> click_left region_editor edit_state cell_pos camera_pos scale) ;
+      mouse_down_left = (fun _ _ -> ()) ;
+      mouse_released_left = (fun _ _ -> ())
+    }
+  in
+  let path_editor_mode : editor_mode =
+    let open PathEditor in
+    {
+      name = PathEditor ;
+      draw = (fun edit_state camera_pos scale mouse_pos -> draw path_editor edit_state camera_pos scale mouse_pos) ;
+      handle_keypress = (fun _ -> false) ;
+      handle_keypress_pos = (fun _ _ -> false);
+      mouse_click_left = (fun edit_state cell_pos camera_pos scale-> click_left path_editor edit_state cell_pos camera_pos scale) ;
       mouse_down_left = (fun _ _ -> ()) ;
       mouse_released_left = (fun _ _ -> ())
     }
@@ -232,6 +249,9 @@ let create_edit_state (bp_edit_state : Board.Blueprint.edit_state) : edit_state 
 
     region_editor ;
     region_editor_mode ;
+
+    path_editor ;
+    path_editor_mode ;
 
     line_drawer ;
     line_drawer_mode ;
@@ -316,6 +336,8 @@ let () =
         edit_state.edit_mode <- edit_state.layer_editor_mode
       else if is_key_down Key.Left_control && is_key_pressed Key.Eight then
         edit_state.edit_mode <- edit_state.waypoint_editor_mode
+      else if is_key_down Key.Left_control && is_key_pressed Key.Nine then
+        edit_state.edit_mode <- edit_state.path_editor_mode
       else if (is_key_pressed Key.O) && (is_key_down Key.Left_control) then
         begin
           let opt_obj = get_static_obj () in

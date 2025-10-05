@@ -26,6 +26,7 @@ let object_selector_margin = 10.0
 
 let agent_selector_width = 350.0
 let agent_selector_height = 280.0
+
 (** Distance from agent selector to window edge *)
 let agent_selector_margin = 10.0
 

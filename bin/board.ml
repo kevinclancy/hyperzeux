@@ -77,6 +77,9 @@ module Blueprint = struct
 
     mutable regions : region StringMap.t ;
     (** Maps each region name to the region *)
+
+    mutable paths : Path.path StringMap.t ;
+    (** Maps each path name to the path *)
   }
 
   type edit_state = {
@@ -144,6 +147,7 @@ module Blueprint = struct
       ambient_agents = StringMap.empty ;
       waypoints = StringMap.empty ;
       regions = StringMap.empty ;
+      paths = StringMap.empty ;
     }
 
   let create_initial_state (width : int) (height : int) (empty_object_key : string) : edit_state =
@@ -265,6 +269,18 @@ module Blueprint = struct
   let del_region (s : edit_state) (name :string) =
     s.blueprint.regions <- StringMap.remove name s.blueprint.regions
 
+  let path_names (s : edit_state) : string list =
+    List.map fst (StringMap.to_list s.blueprint.paths)
+
+  let get_path (s : edit_state) (name : string) : Path.path =
+    StringMap.find name s.blueprint.paths
+
+  let add_path (s : edit_state) (name : string) (path : Path.path) =
+    s.blueprint.paths <- StringMap.add name path s.blueprint.paths
+
+  let del_path (s : edit_state) (name : string) =
+    s.blueprint.paths <- StringMap.remove name s.blueprint.paths
+
   let add_waypoint (s : edit_state) (waypoint_name : string) (pos : pre_position) (description : string) : unit =
     let pos' = { layer = s.current_layer; x = pos.x; y = pos.y } in
     assert (StaticObjectMap.get (!(get_static_object_ref s.blueprint pos')).name).traversable;
@@ -366,6 +382,28 @@ module Blueprint = struct
     done;
     region_name, { description ; components = !components }
 
+  let output_path (chan : out_channel) (path_name : string) (path : Path.path) : unit =
+    output_binary_string chan path_name;
+    output_binary_string chan path.description;
+    output_binary_int chan (List.length path.nodes);
+    List.iter (fun ({x;y} : pre_position) ->
+      output_binary_int chan x;
+      output_binary_int chan y
+    ) path.nodes
+
+  let input_path (chan : in_channel) : string * Path.path =
+    (** Returns pair of (path name, path) *)
+    let path_name = input_binary_string chan in
+    let description = input_binary_string chan in
+    let num_nodes = input_binary_int chan in
+    let nodes = ref [] in
+    for _i = 0 to (num_nodes-1) do
+      let x = input_binary_int chan in
+      let y = input_binary_int chan in
+      nodes := !nodes @ [({x;y} : pre_position)];
+    done;
+    path_name, { description ; nodes = !nodes }
+
   let input_agent (chan : in_channel) : agent_blueprint =
     let agent_class_name = input_binary_string chan in
     let agent_name = input_binary_string chan in
@@ -427,6 +465,8 @@ module Blueprint = struct
     StringMap.iter (output_waypoint chan) bp.waypoints;
     output_binary_int chan (StringMap.cardinal bp.regions);
     StringMap.iter (output_region chan) bp.regions;
+    output_binary_int chan (StringMap.cardinal bp.paths);
+    StringMap.iter (output_path chan) bp.paths;
     close_out chan
 
   let deserialize (filename : string) : t =
@@ -456,6 +496,11 @@ module Blueprint = struct
     for i = 0 to num_regions - 1 do
       let region_name, region = input_region chan in
       result_bp.regions <- StringMap.add region_name region result_bp.regions;
+    done;
+    let num_paths = input_binary_int chan in
+    for i = 0 to num_paths - 1 do
+      let path_name, path = input_path chan in
+      result_bp.paths <- StringMap.add path_name path result_bp.paths;
     done;
     close_in chan;
     result_bp
@@ -491,6 +536,36 @@ module Blueprint = struct
             draw_texture_ex texture pos 0.0 1.0 Raylib.Color.green
           end
         in
+        let draw_path (_ : string) (path : Path.path) : unit =
+          let node_radius = 3.0 in
+          let curve_thickness = 2.0 in
+          let path_color = color_alpha Raylib.Color.yellow 0.25 in
+
+          (* Helper to convert pre_position to center of grid cell in pixel coordinates *)
+          let cell_center (pos : pre_position) : Vector2.t =
+            let x = (Float.of_int pos.x *. Common.char_width_f) +. (Common.char_width_f /. 2.0) in
+            let y = (Float.of_int pos.y *. Common.char_height_f) +. (Common.char_height_f /. 2.0) in
+            Vector2.create x y
+          in
+
+          (* Draw curves connecting consecutive nodes *)
+          let rec draw_curves nodes =
+            match nodes with
+            | p1 :: p2 :: rest ->
+              let pos1 = cell_center p1 in
+              let pos2 = cell_center p2 in
+              draw_line_bezier pos1 pos2 curve_thickness path_color;
+              draw_curves (p2 :: rest)
+            | _ -> ()
+          in
+          draw_curves path.nodes;
+
+          (* Draw circles at each node position *)
+          List.iter (fun node_pos ->
+            let center = cell_center node_pos in
+            draw_circle_v center node_radius path_color
+          ) path.nodes
+        in
         let draw_region_component (color : Raylib.Color.t) (_ : string) (component : region_component) : unit =
           if component.layer = s.current_layer then begin
             let width = component.right - component.left + 1 in
@@ -517,6 +592,7 @@ module Blueprint = struct
         StringMap.iter draw_agent s.blueprint.agents;
         StringMap.iter draw_waypoint s.blueprint.waypoints;
         StringMap.iter draw_region s.blueprint.regions;
+        StringMap.iter draw_path s.blueprint.paths;
         draw_texture_pro (RenderTexture.texture current_layer.grid_texture) src dest (Vector2.zero ()) 0.0 Color.white;
       end_texture_mode ()
 
@@ -545,7 +621,21 @@ module Blueprint = struct
         draw_text waypoint.name screen_x screen_y 14 text_color
       end
     in
-    StringMap.iter draw_waypoint_name s.blueprint.waypoints
+    StringMap.iter draw_waypoint_name s.blueprint.waypoints;
+
+    (* Draw path names near their starting points *)
+    let draw_path_name (name : string) (path : Path.path) : unit =
+      match path.nodes with
+      | first_node :: _ ->
+        let cell_pos = { x = first_node.x ; y = first_node.y } in
+        let screen_pos = boardpos_top_left pos scale cell_pos in
+        let screen_x = Int.of_float (Vector2.x screen_pos) in
+        let screen_y = Int.of_float ((Vector2.y screen_pos) -. 12.0) in
+        let text_color = color_alpha Color.yellow 0.8 in
+        draw_text name screen_x screen_y 14 text_color
+      | [] -> ()
+    in
+    StringMap.iter draw_path_name s.blueprint.paths
 
   let get_waypoint_at_pos (s : edit_state) (pos : pre_position) : string option =
     (** Returns the name of the waypoint at the given position, if one exists *)
@@ -692,7 +782,9 @@ let update (board : t) : unit =
           Agent.set_position agent pos';
           let handle_entrance_exit (region_name : string) ((region, region_agent_opt) : region * RegionAgent.t option) : unit =
             (** TODO: We need to track the set of regions each agent is currently in so that we can call on_puppet_exit as well *)
-            if Region.contains region pos' then begin
+            let was_in_region = Region.contains region pos in
+            let is_in_region = Region.contains region pos' in
+            if is_in_region && not was_in_region then begin
               match region_agent_opt with
               | Some(region_agent) ->
                 RegionAgent.on_puppet_enter region_agent (PuppetExternal.from (Agent.puppet agent))

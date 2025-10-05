@@ -38,7 +38,7 @@ let weak_walk_south () = weak_walk 0 1
 let weak_walk_west () = weak_walk (-1) 0
 
 let wait (n : int) =
-  for i = 1 to n do
+  for _ = 1 to n do
     ignore (Effect.perform @@ Act Wait)
   done
 

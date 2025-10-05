@@ -22,12 +22,18 @@ let state_speech : camera_fields CameraAgentState.blueprint = {
         [
           Channel.attach_handler speech (fun speech_command board ->
             match speech_command with
-            | DisplaySpeech (lines, is_finished) ->
-              board.draw_text "speech_box" lines;
+            | DisplaySpeech (lines, opt_speaker, is_finished) ->
+              let name_text = Option.value (Option.map Puppet.get_name opt_speaker) ~default:"" in
+              let text_color = Option.value (Option.map Puppet.get_color opt_speaker) ~default:Raylib.Color.white in
+              board.draw_text "speech_box" "empty" text_color lines;
+              board.draw_text "speech_name_tag" "double_line_xexw" text_color [name_text];
               fields.speech_state <- SpeechVisible(is_finished);
               None
-            | BeginSpeech (lines, is_finished) ->
-              board.draw_text "speech_box" lines;
+            | BeginSpeech (lines, opt_speaker, is_finished) ->
+              let name_text = Option.value (Option.map Puppet.get_name opt_speaker) ~default:"" in
+              let text_color = Option.value (Option.map Puppet.get_color opt_speaker) ~default:Raylib.Color.white in
+              board.draw_text "speech_box" "empty" text_color lines;
+              board.draw_text "speech_name_tag" "double_line_xexw" text_color [name_text];
               fields.speech_state <- SpeechVisible(is_finished);
               None
             | EndSpeech ->

@@ -14,7 +14,7 @@ let button_height = 28.0
 (** height of "Add Ambient" and "Del Ambient" buttons *)
 
 type t = {
-  mutable curr_class : ambient_agent_class ref ;
+  mutable curr_class : ambient_agent_class option ref ;
   font : Raylib.Font.t ;
   mutable speed : float ;
   mutable agent_name : string ;
@@ -25,7 +25,11 @@ type t = {
 }
 
 let create () : t =
-  let curr_class = AmbientAgentClassMap.(get_next_elem (get_first_elem ())) in
+  let curr_class =
+    try
+      Some (AmbientAgentClassMap.(get_next_elem (get_first_elem ())))
+    with Assert_failure _ -> None
+  in
   {
     curr_class = ref curr_class ;
     font = Raylib.load_font "fonts/romulus.png" ;

@@ -10,9 +10,10 @@ type board_interface = {
   get_puppet : string -> Puppet.t ;
   (** Retrieve the puppet with the given name *)
 
-  draw_text : string -> string list -> unit ;
-  (** [draw_text region_name text_lines] draws [text_lines] into the region named [region_name],
-      where each element of [text_lines] is drawn on a subsequent line.
+  draw_text : string -> string -> Raylib.Color.t -> string list -> unit ;
+  (** [draw_text region_name fill_obj color text_lines] draws [text_lines] into the region named [region_name],
+      where each element of [text_lines] is drawn on a subsequent line, and the right margin after each line
+      is filled with the static object named [fill_obj].
       Precondition: the region must have exactly one component. *)
 
   get_path : position -> position -> direction list option

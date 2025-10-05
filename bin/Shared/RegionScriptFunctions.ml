@@ -1,7 +1,7 @@
 let say (lines : string list) : unit =
   let open Channels.Speech in
   let finished = ref false in
-  Channel.send_msg speech (DisplaySpeech (lines, finished));
+  Channel.send_msg speech (DisplaySpeech (lines, None, finished));
   while not !finished do
     ignore (Effect.perform @@ RegionAgentState.RegionAction ())
   done
@@ -9,7 +9,7 @@ let say (lines : string list) : unit =
 let begin_speech (lines : string list) : unit =
   let open Channels.Speech in
   let finished = ref false in
-  Channel.send_msg speech (BeginSpeech (lines, finished));
+  Channel.send_msg speech (BeginSpeech (lines, None, finished));
   while not !finished do
     ignore (Effect.perform @@ RegionAgentState.RegionAction ())
   done

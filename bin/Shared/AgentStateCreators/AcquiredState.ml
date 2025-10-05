@@ -2,13 +2,13 @@ open Common
 open AgentState
 open BoardInterface
 
-
-
 type command_functions = {
   walk_north : Puppet.t -> unit ;
   walk_east : Puppet.t -> unit ;
   walk_south : Puppet.t -> unit ;
   walk_west : Puppet.t -> unit ;
+  walk_to : Puppet.t -> board_interface -> string -> unit ;
+  (** [walk_to puppet board_interface waypoint] walks [puppet] to the waypoint named [waypoint] *)
 }
 (** Functions that command the acquired agent to walk in the four cardinal directions *)
 

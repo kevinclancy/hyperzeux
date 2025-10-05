@@ -1,15 +1,15 @@
-let say (lines : string list) : unit =
+let say (self : Puppet.t) (lines : string list) : unit =
   let open Channels.Speech in
   let finished = ref false in
-  Channel.send_msg speech (DisplaySpeech (lines, finished));
+  Channel.send_msg speech (DisplaySpeech (lines, Some(self), finished));
   while not !finished do
     ignore (Effect.perform @@ Actions.Act Actions.Wait)
   done
 
-let begin_speech (lines : string list) : unit =
+let begin_speech (self : Puppet.t) (lines : string list) : unit =
   let open Channels.Speech in
   let finished = ref false in
-  Channel.send_msg speech (BeginSpeech (lines, finished));
+  Channel.send_msg speech (BeginSpeech (lines, Some(self), finished));
   while not !finished do
     ignore (Effect.perform @@ Actions.Act Actions.Wait)
   done

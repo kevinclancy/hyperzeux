@@ -1,7 +1,14 @@
 open Common
 open Region
 
-let draw_text_in_region (set_static_object : position -> string -> unit) (refresh_static : region -> unit) (regions : region StringMap.t) (region_name : string) (lines : string list) : unit =
+let draw_text_in_region
+  (set_static_object : position -> string -> Raylib.Color.t -> unit)
+  (refresh_static : region -> unit)
+  (regions : region StringMap.t)
+  (region_name : string)
+  (fill_obj_name : string)
+  (text_color : Raylib.Color.t)
+  (lines : string list) : unit =
   (** [draw_text_in_region set_static_object refresh_static regions region_name lines]
       Draws [lines] into the region named [region_name],
       starting from the top-left corner of the region with each string on a separate line.
@@ -34,7 +41,7 @@ let draw_text_in_region (set_static_object : position -> string -> unit) (refres
             let char_code = Char.code c in
             if !current_y <= bottom_boundary && !current_x <= right_boundary then begin
               let char_obj_name = String.concat "" ["ascii" ; Int.to_string char_code] in
-              set_static_object {layer = layer_name; x = !current_x; y = !current_y} char_obj_name;
+              set_static_object {layer = layer_name; x = !current_x; y = !current_y} char_obj_name text_color;
               current_x := !current_x + 1
             end
           )
@@ -42,7 +49,7 @@ let draw_text_in_region (set_static_object : position -> string -> unit) (refres
 
         (* Fill rest of the current line with "empty" *)
         while !current_x <= right_boundary do
-          set_static_object {layer = layer_name; x = !current_x; y = !current_y} "empty";
+          set_static_object {layer = layer_name; x = !current_x; y = !current_y} fill_obj_name Raylib.Color.white;
           current_x := !current_x + 1
         done;
 
@@ -55,7 +62,7 @@ let draw_text_in_region (set_static_object : position -> string -> unit) (refres
   (* Fill remaining cells in the region with "empty" *)
   while !current_y <= bottom_boundary do
     while !current_x <= right_boundary && !current_y <= bottom_boundary do
-      set_static_object {layer = layer_name; x = !current_x; y = !current_y} "empty";
+      set_static_object {layer = layer_name; x = !current_x; y = !current_y} fill_obj_name Raylib.Color.white;
       current_x := !current_x + 1
     done;
     current_x := start_x;

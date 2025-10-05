@@ -737,10 +737,21 @@ let refresh_static_region (layers : layer StringMap.t) (region : region) : unit 
     let layer = StringMap.find component.layer layers in
     let open Raylib in
     begin_texture_mode layer.static_texture;
+      (* Clear the region to transparent before redrawing *)
+      let height_pixels = layer.height * Config.char_height in
+      let region_x = component.left * Config.char_width in
+      (* Scissor mode uses top-down coordinates, so Y is from the top *)
+      let region_y = component.top * Config.char_height in
+      let region_width = (component.right - component.left + 1) * Config.char_width in
+      let region_height = (component.bottom - component.top + 1) * Config.char_height in
+      (* Use scissor mode to properly clear only this region *)
+      begin_scissor_mode region_x region_y region_width region_height;
+        clear_background (Color.create 0 0 0 0);
+      end_scissor_mode ();
+
       for x = component.left to component.right do
         for y = component.top to component.bottom do
           let cell = Array.get (Array.get layer.grid x) y in
-          let height_pixels = layer.height * Config.char_height in
           let src_rect = rect 0.0 0.0 (Float.of_int Config.char_width) (Float.of_int @@ - Config.char_height) in
           let dest_rect =
             rect
@@ -918,11 +929,11 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
   let open Agent in
   let layers = StringMap.map layer_from_blueprint blueprint.layers in
   let agents = ref StringMap.empty in
-  let set_static_object (pos : position) (static_obj_name : string) : unit =
+  let set_static_object (pos : position) (static_obj_name : string) (color : Raylib.Color.t) : unit =
     let layer = StringMap.find pos.layer layers in
     let static_obj = StaticObjectMap.get static_obj_name in
     let cell = (Array.get (Array.get layer.grid pos.x) pos.y) in
-    cell := { !cell with static_object = static_obj }
+    cell := { !cell with static_object = static_obj; static_object_color = color }
   in
   let board_intf : board_interface = {
       get_waypoint = (fun (name : string) ->
@@ -934,8 +945,15 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
       get_puppet = (fun (name : string) ->
         Agent.puppet (fst (StringMap.find name !agents))
       );
-      draw_text = (fun (region_name : string) (text : string list) ->
-        Drawing.draw_text_in_region set_static_object (refresh_static_region layers) blueprint.regions region_name text
+      draw_text = (fun (region_name : string) (fill_obj : string) (text_color : Raylib.Color.t) (text : string list) ->
+        Drawing.draw_text_in_region
+          set_static_object
+          (refresh_static_region layers)
+          blueprint.regions
+          region_name
+          fill_obj
+          text_color
+          text
       );
       get_path = (fun (start_pos : position) (end_pos : position) ->
         a_star_pathfind layers start_pos end_pos

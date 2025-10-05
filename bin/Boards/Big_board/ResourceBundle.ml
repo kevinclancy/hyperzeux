@@ -3,6 +3,7 @@ open Common
 let resources : ResourceBundleMap.resource_bundle_def = {
   name = "big_board" ;
   texture_paths = [
+    "ruffian.png";
     "person_south_recon.png";
     "person_north_recon.png";
     "person_east_recon.png";
@@ -42,7 +43,6 @@ let resources : ResourceBundleMap.resource_bundle_def = {
     Shared.Agents.Player.player_class
   ] ;
   ambient_agent_classes = [
-    Shared.Ambient_agents.SpeechBox.speech_box_class
   ] ;
   region_agent_classes = [
     Agents.HotSpot.hotspot_class

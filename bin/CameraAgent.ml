@@ -67,7 +67,11 @@ let update_input (agent : t) : unit =
 let rec resume (agent : t) (t_delta_seconds : float) : unit =
   let open Effect.Deep in
   let open Actions in
-  CameraAgentState.resume agent.agent_state agent.board t_delta_seconds
+  match CameraAgentState.resume agent.agent_state agent.board t_delta_seconds with
+  | ChangeState(new_state) ->
+    agent.agent_state <- new_state
+  | MaintainState ->
+    ()
 
 let get_viewports (agent : t) : camera_transform list =
     CameraAgentState.get_viewports agent.agent_state

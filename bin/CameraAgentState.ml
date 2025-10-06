@@ -51,11 +51,17 @@ type 's state_functions = {
   key_space_released : (board_interface -> 's -> t option) option
 }
 
+and resume_result =
+  | MaintainState
+  (** [MaintainState] Tells the camera agent to continue in its current state *)
+  | ChangeState of t
+  (** [ChangeState s] Tells the camera agent to change to state [s] and submit an [Idle] action to the board  *)
+
 and script_state =
-  | BeginScript of (board_interface -> float ref -> unit)
-  (** [BeginScript script] Agent will subsequently begin executing [script] *)
-  | RunningAgent of (unit, unit) Effect.Deep.continuation
-  (** [RunningAgent cont] where [cont] may produce [Act] effects *)
+  | BeginScript of (board_interface -> float ref -> t option)
+  (** [BeginScript script] Agent will subsequently begin executing [script]. Returns Some(new_state) if state change requested. *)
+  | RunningAgent of (unit, resume_result) Effect.Deep.continuation
+  (** [RunningAgent cont] where [cont] may produce [CameraAction] effects and return optional state change *)
   | Idling
   (** [Idling] Agent is waiting to respond to stimuli *)
 
@@ -114,6 +120,9 @@ let empty_state_functions = {
   key_space_released = None ;
 }
 
+exception ChangeState of t
+(** ChangeState(s) signals a change to state [s] *)
+
 let create (bp : 's blueprint) (priv_data : 's) : t =
   let state_functions = bp.state_functions in
   {
@@ -128,7 +137,11 @@ let create (bp : 's blueprint) (priv_data : 's) : t =
       script_state =
         begin match state_functions.script with
         | Some f ->
-          BeginScript(fun board t_delta_seconds -> f board t_delta_seconds priv_data)
+          BeginScript(fun board t_delta_seconds ->
+            try (f board t_delta_seconds priv_data; None) with
+            | ChangeState(s) ->
+              Some(s)
+          )
         | None ->
           Idling
         end;
@@ -220,23 +233,28 @@ let name (state : t) : string =
 let get_viewports (state : t) : camera_transform list =
   state.get_viewports ()
 
-let resume (state : t) (board : board_interface) (t_delta_seconds : float) : unit =
+let resume (state : t) (board : board_interface) (t_delta_seconds : float) : resume_result =
   let open Effect.Deep in
   match state.script_state with
   | Idling ->
-    ()
+    MaintainState
   | RunningAgent k ->
     state.t_delta_seconds := t_delta_seconds;
     continue k ()
   | BeginScript script ->
     match script board state.t_delta_seconds with
-    | () ->
+    | Some(s) ->
       state.assert_invariants board;
-      state.script_state <- Idling
+      state.script_state <- Idling;
+      ChangeState(s)
+    | None ->
+      state.assert_invariants board;
+      state.script_state <- Idling;
+      MaintainState
     | effect (CameraAction ()), k ->
       state.assert_invariants board;
       state.script_state <- RunningAgent k;
-      ()
+      MaintainState
 
 let handle_messages (state : t) (board : board_interface) : t option =
   let handle_channel (handler : channel_handler) : t option =

@@ -1,11 +1,10 @@
 open Common
 open BoardInterface
 open CameraAgentState
+open Shared.CameraStateCreators.AcquiredCameraState
 
-type camera_fields = {
-  mutable pos : vec2 ;
-  mutable scale : float ;
-}
+(* Create the acquired camera state kit using the channel from Channels module *)
+let acquired_kit = create Channels.world_camera_acquire
 
 let state_following_player : camera_fields CameraAgentState.blueprint = {
   state_functions = {
@@ -30,6 +29,10 @@ let state_following_player : camera_fields CameraAgentState.blueprint = {
 
       get_viewports = (fun (fields : camera_fields) ->
         [({ layer = "main" ; pos = fields.pos ; scale = fields.scale })]) ;
+
+      create_handlers = Some(fun fields ->
+        [acquired_kit.acquire_handler fields]
+      );
   };
 
   props = {
@@ -37,12 +40,18 @@ let state_following_player : camera_fields CameraAgentState.blueprint = {
   };
 }
 
-let camera : CameraAgent.camera_agent_class = {
-  states = StringMap.of_list [
-    ("FollowingPlayer", state_following_player.props)
-  ];
+let () =
+  let initial_fields = { pos = vec2 0. 0. ; scale = 4. } in
+  acquired_kit.set_return_state (CameraAgentState.create state_following_player initial_fields)
 
-  initial_state = CameraAgentState.create state_following_player { pos = vec2 0. 0. ; scale = 4. } ;
+let camera : CameraAgent.camera_agent_class =
+  let initial_fields = { pos = vec2 0. 0. ; scale = 4. } in
+  acquired_kit.add_acquire_states {
+    states = StringMap.of_list [
+      ("FollowingPlayer", state_following_player.props)
+    ];
 
-  name = "Camera"
-}
+    initial_state = CameraAgentState.create state_following_player initial_fields;
+
+    name = "Camera"
+  }

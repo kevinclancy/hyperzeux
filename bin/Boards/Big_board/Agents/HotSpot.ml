@@ -5,27 +5,30 @@ open Common
 let script (board : board_interface) (puppet : PuppetExternal.t) =
   let open Shared.RegionScriptFunctions in
 
-  with_acquired [Channels.ruffian_sees_greencup] (fun [command_patroller_chan] ->
+  let acq_agents = [Channels.ruffian_sees_greencup] in
+  let acq_cameras = [Channels.world_camera_acquire] in
+
+  with_acquired acq_agents acq_cameras (fun [ruffian] [camera] ->
     start_music "music/Mono.mp3";
     begin_speech [
-      "the moment you walk into the green";
-      "cup, a strange ruffian nearby explodes";
-      "into a fit of anger"
+      "the moment you walk near the ruffian";
+      "he cowers in fear"
     ];
-    perform_command command_patroller_chan (fun self board_intf command_fns ->
+    perform_command ruffian (fun self board_intf command_fns ->
       let open Shared.AgentScriptFunctions in
       say self [
-        "You fool! Walking into the green cup" ;
-        "could destroy my special plant!"
+        "Heellllp! A stranger! Leafy!" ;
+        "Help me leafy!"
       ];
       end_speech ();
       command_fns.walk_to self board_intf "special_plant"
     );
     begin_speech [
-      "The man saw that his plant was okay";
-      "and became visibly calm."
+      "The ruffian relaxes as he approaches";
+      "the tuft of grass."
     ];
     end_speech ();
+    cam_perform_command camera (Shared.CameraScriptFunctions.pan_along_path "path1");
     stop_music_fade_out 2.0
   )
 

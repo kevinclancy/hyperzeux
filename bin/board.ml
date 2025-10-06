@@ -1050,6 +1050,9 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
       get_path = (fun (start_pos : position) (end_pos : position) ->
         a_star_pathfind layers start_pos end_pos
       );
+      get_named_path = (fun (name : string) ->
+        StringMap.find name blueprint.paths
+      );
   } in
   let create_ambient_agent (agent_bp : Blueprint.ambient_agent_blueprint) : AmbientAgent.t =
     let agent_class = AmbientAgentClassMap.get agent_bp.agent_class_name in

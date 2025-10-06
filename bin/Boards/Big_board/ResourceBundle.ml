@@ -8,6 +8,10 @@ let resources : ResourceBundleMap.resource_bundle_def = {
     "person_north_recon.png";
     "person_east_recon.png";
     "person_west_recon.png";
+    "woman1_north.png";
+    "woman1_east.png";
+    "woman1_south.png";
+    "woman1_west.png";
     "person2_south.png";
     "person2_north.png";
     "person2_east.png";

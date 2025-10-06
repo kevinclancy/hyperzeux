@@ -51,6 +51,12 @@ type 's state_functions = {
   key_space_released : (board_interface -> 's -> t option) option
 }
 
+and resume_result =
+  | MaintainState
+  (** [MaintainState] Tells the camera agent to continue in its current state *)
+  | ChangeState of t
+  (** [ChangeState s] Tells the camera agent to change to state [s] and submit an [Idle] action to the board  *)
+
 val empty_state_functions : 's state_functions
 
 type blueprint_props = {
@@ -70,6 +76,9 @@ type 's blueprint = {
   (** Properties shared by all agent state blueprints, regardless of private data type *)
 }
 
+exception ChangeState of t
+(** ChangeState(s) signals a change to state [s] *)
+
 val create : 's blueprint -> 's -> t
 (** [create blueprint initial_state] Creates a new agent state from [blueprint]
     using [initial_state] as initial state *)
@@ -81,8 +90,9 @@ val get_viewports : t -> camera_transform list
 val name : t -> string
 (** [state_name s] is the name of the state [s] *)
 
-val resume : t -> board_interface -> float -> unit
-(** [resume state board_interface t_delta_seconds] Resume the [state]'s coroutine *)
+val resume : t -> board_interface -> float -> resume_result
+(** [resume state board_interface t_delta_seconds] Resume the [state]'s coroutine.
+    Returns Some(new_state) if a state change was requested, None otherwise. *)
 
 val handle_messages : t -> board_interface -> t option
 (** [handle_messages state board_interface] handles incoming messages until one of the two conditions is encountered:

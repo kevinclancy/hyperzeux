@@ -16,7 +16,10 @@ type board_interface = {
       is filled with the static object named [fill_obj].
       Precondition: the region must have exactly one component. *)
 
-  get_path : position -> position -> direction list option
+  get_path : position -> position -> direction list option ;
   (** [get_path start_pos end_pos] returns a list of directions that an agent at [start_pos]
       must traverse to reach [end_pos]. Returns [None] if no path exists. *)
+
+  get_named_path : string -> Path.path
+  (** [get_named_path name] returns the path with the given name *)
 }

@@ -192,7 +192,7 @@ module Blueprint = struct
     let static_obj = StaticObjectMap.get static_obj_key in
     let open Raylib in
     begin_texture_mode layer.static_bg_texture;
-      let tex_name = if static_obj.texture_name = "transparent.png" then "transparent_viz.png" else static_obj.texture_name in
+      let tex_name = if static_obj.texture_name = "global/scene/transparent_viz.png" then "global/scene/transparent_viz.png" else static_obj.texture_name in
       let texture = TextureMap.get tex_name in
       let x = Float.of_int @@ Config.char_width * pos.x in
       let y = Float.of_int @@ Config.char_height * pos.y in
@@ -532,7 +532,7 @@ module Blueprint = struct
           if waypoint.position.layer = s.current_layer then begin
             let { x ; y } = waypoint.position in
             let pos = Vector2.create (Float.of_int @@ x * Config.char_width) (Float.of_int @@ y * Config.char_height) in
-            let texture = TextureMap.get "waypoint.png" in
+            let texture = TextureMap.get "global/scene/waypoint.png" in
             draw_texture_ex texture pos 0.0 1.0 Raylib.Color.green
           end
         in
@@ -548,17 +548,40 @@ module Blueprint = struct
             Vector2.create x y
           in
 
-          (* Draw curves connecting consecutive nodes *)
-          let rec draw_curves nodes =
-            match nodes with
-            | p1 :: p2 :: rest ->
-              let pos1 = cell_center p1 in
-              let pos2 = cell_center p2 in
-              draw_line_bezier pos1 pos2 curve_thickness path_color;
-              draw_curves (p2 :: rest)
-            | _ -> ()
-          in
-          draw_curves path.nodes;
+          (* Draw smooth cubic spline curve through all nodes *)
+          (match path.nodes with
+          | [] | [_] -> () (* Need at least 2 nodes for a curve *)
+          | _ ->
+            let num_nodes = List.length path.nodes in
+            let positions = List.map cell_center path.nodes in
+
+            (* Extract x and y coordinates *)
+            let x_coords = Array.of_list (List.map Vector2.x positions) in
+            let y_coords = Array.of_list (List.map Vector2.y positions) in
+            let t_params = Array.init num_nodes (fun i -> Float.of_int i) in
+
+            (* Create cubic spline interpolations *)
+            let x_spline = CubicSpline.create t_params x_coords in
+            let y_spline = CubicSpline.create t_params y_coords in
+
+            (* Draw the curve by sampling points along the spline *)
+            let num_segments = num_nodes * 20 in (* 20 line segments per node pair *)
+            let t_max = Float.of_int (num_nodes - 1) in
+
+            for i = 0 to num_segments - 1 do
+              let t1 = t_max *. Float.of_int i /. Float.of_int num_segments in
+              let t2 = t_max *. Float.of_int (i + 1) /. Float.of_int num_segments in
+
+              let x1 = CubicSpline.eval x_spline t1 in
+              let y1 = CubicSpline.eval y_spline t1 in
+              let x2 = CubicSpline.eval x_spline t2 in
+              let y2 = CubicSpline.eval y_spline t2 in
+
+              let pos1 = Vector2.create x1 y1 in
+              let pos2 = Vector2.create x2 y2 in
+              draw_line_ex pos1 pos2 curve_thickness path_color
+            done
+          );
 
           (* Draw circles at each node position *)
           List.iter (fun node_pos ->
@@ -1051,7 +1074,12 @@ let create_from_blueprint (blueprint : Blueprint.t) : t =
         a_star_pathfind layers start_pos end_pos
       );
       get_named_path = (fun (name : string) ->
-        StringMap.find name blueprint.paths
+        match StringMap.find_opt name blueprint.paths with
+        | Some(p) ->
+          p
+        | None ->
+          Printf.printf "Could not find path %s\n" name;
+          raise Not_found
       );
   } in
   let create_ambient_agent (agent_bp : Blueprint.ambient_agent_blueprint) : AmbientAgent.t =

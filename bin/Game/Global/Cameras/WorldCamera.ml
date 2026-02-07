@@ -1,7 +1,7 @@
 open Common
 open BoardInterface
 open CameraAgentState
-open Shared.CameraStateCreators.AcquiredCameraState
+open CameraStateCreators.AcquiredCameraState
 
 (* Create the acquired camera state kit using the channel from Channels module *)
 let acquired_kit = create Channels.world_camera_acquire

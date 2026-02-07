@@ -268,7 +268,9 @@ let () =
   init_window Config.screen_width Config.screen_height "Hyperzeux";
   set_target_fps 60;
 
-  ResourceBundleMap.add Boards.Big_board.ResourceBundle.resources;
+  ResourceBundleMap.add Game.Global.ResourceBundle.resources;
+  ResourceBundleMap.add Game.Big_board.ResourceBundle.resources;
+  ResourceBundleMap.load_bundle "global";
   ResourceBundleMap.load_bundle "big_board";
 
   Raylib.init_audio_device ();

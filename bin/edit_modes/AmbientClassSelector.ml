@@ -32,7 +32,7 @@ let create () : t =
   in
   {
     curr_class = ref curr_class ;
-    font = Raylib.load_font "fonts/romulus.png" ;
+    font = Raylib.load_font "images/global/fonts/romulus.png" ;
     speed = 0.5 ;
     agent_name = "joe" ;
 

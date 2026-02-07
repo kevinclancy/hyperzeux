@@ -1,7 +1,7 @@
 
 val load : string -> unit
-(** [load filename] Loads a texture from [filename], where [filename] is the path of an image
-    relative to the images subdirectory. Stores the texture in the texture map with key [filename].
+(** [load relative_path] Loads a texture from ./images/[relative_path].
+    Stores the texture in the texture map with key [relative_path].
 *)
 
 val load_ascii_font : string -> string -> unit

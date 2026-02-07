@@ -150,14 +150,14 @@ let draw (text_writer : t)
 
   begin match !text_writer with
   | Writing(pos) ->
-    let romulus_font = FontMap.get "romulus.png" in
+    let romulus_font = FontMap.get "global/fonts/romulus.png" in
     let text_pos = vec2 (boundary_left +. 5.) (boundary_top +. 5.) in
     draw_text_ex romulus_font "Type text.\nPress escape when finished." text_pos 18.0 1.0 Color.white
 
     (** TODO: highlight current position *)
 
   | Locating ->
-    let romulus_font = FontMap.get "romulus.png" in
+    let romulus_font = FontMap.get "global/fonts/romulus.png" in
     let text_pos = vec2 (boundary_left +. 5.) (boundary_top +. 5.) in
     draw_text_ex romulus_font "Left-click a board cell to begin\nwriting text." text_pos 18.0 1.0 Color.white
   end;
@@ -169,7 +169,7 @@ let click_left (text_writer : t) (edit_state : Board.Blueprint.edit_state) (curs
   text_writer := (Writing cursor_cell_pos)
 
 let write_char (text_writer : t) (char_code : int) (edit_state : Board.Blueprint.edit_state) (pos : pre_position) : unit =
-  let char_obj_name = String.concat "" ["ascii" ; Int.to_string char_code] in
+  let char_obj_name = String.concat "" ["global/ascii" ; Int.to_string char_code] in
   Board.Blueprint.set_static_object edit_state pos char_obj_name Raylib.Color.white;
   if pos.x + 1 < Board.Blueprint.get_width edit_state then
     text_writer := Writing({ pos with x = pos.x + 1 })

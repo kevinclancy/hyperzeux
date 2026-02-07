@@ -18,7 +18,7 @@ let end_speech () : unit =
   let open Channels.Speech in
   Channel.send_msg speech EndSpeech
 
-let acquire (acquire_channel : AgentStateCreators.AcquiredState.acquire_msg Channel.t) : AgentStateCreators.AcquiredState.command_channel =
+let acquire (acquire_channel : Acquisition.acquire_msg Channel.t) : Acquisition.command_channel =
   (** [acquire acquire_channel] acquires an agent by sending a message on its acquire channel.
       Returns the command channel for sending commands to the acquired agent. *)
 
@@ -41,21 +41,21 @@ let acquire_camera (acquire_channel : CameraStateCreators.AcquiredCameraState.ac
   Option.get !ref_opt_command_channel
 
 let send_command
-  (command_channel : AgentStateCreators.AcquiredState.command_channel)
-  (script_fn : AgentStateCreators.AcquiredState.script_fn)
+  (command_channel : Acquisition.command_channel)
+  (script_fn : Acquisition.script_fn)
   : bool ref =
 
   (** [send_command command_channel script_fn] sends a command along a command channel,
       and returns a reference that becomes true when the command has finished executing *)
 
-  let open AgentStateCreators.AcquiredState in
+  let open Acquisition in
   let is_finished = ref false in
   Channel.send_msg command_channel (Command (script_fn, is_finished));
   is_finished
 
 let perform_command
-  (command_channel : AgentStateCreators.AcquiredState.command_channel)
-  (script_fn : AgentStateCreators.AcquiredState.script_fn)
+  (command_channel : Acquisition.command_channel)
+  (script_fn : Acquisition.script_fn)
   : unit =
 
   (** [perform_command command_channel script_fn] sends a command along a command channel, and returns once the
@@ -83,10 +83,10 @@ let cam_perform_command
   done;
   ()
 
-let unacquire (command_channel : AgentStateCreators.AcquiredState.command_channel) : unit =
+let unacquire (command_channel : Acquisition.command_channel) : unit =
   (** [unacquire command_channel] releases the acquired agent, returning it to its return state *)
 
-  let open AgentStateCreators.AcquiredState in
+  let open Acquisition in
   let is_finished = ref false in
   Channel.send_msg command_channel (Release is_finished);
   while not !is_finished do
@@ -106,9 +106,9 @@ let unacquire_camera (command_channel : CameraStateCreators.AcquiredCameraState.
   ()
 
 let with_acquired
-  (agent_acquire_channels : AgentStateCreators.AcquiredState.acquire_msg Channel.t list)
+  (agent_acquire_channels : Acquisition.acquire_msg Channel.t list)
   (camera_acquire_channels : CameraStateCreators.AcquiredCameraState.acquire_msg Channel.t list)
-  (f : AgentStateCreators.AcquiredState.command_channel list -> CameraStateCreators.AcquiredCameraState.command_channel list -> unit)
+  (f : Acquisition.command_channel list -> CameraStateCreators.AcquiredCameraState.command_channel list -> unit)
   : unit =
   (** [with_acquired agent_acquire_channels camera_acquire_channels f] acquires multiple agents and cameras by their acquire channels,
       calls [f] with their command channels, and automatically releases all agents and cameras when [f] completes

@@ -9,7 +9,7 @@ type t = {
 let create () : t =
   {
     curr_object = StaticObjectMap.(get_next_elem (get_first_elem ())) ;
-    font = Raylib.load_font "fonts/romulus.png" ;
+    font = Raylib.load_font "images/global/fonts/romulus.png" ;
     color = Raylib.Color.white
   }
 

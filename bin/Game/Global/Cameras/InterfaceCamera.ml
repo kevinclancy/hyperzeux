@@ -18,7 +18,7 @@ let state_speech : camera_fields CameraAgentState.blueprint = {
   state_functions = {
     CameraAgentState.empty_state_functions with
       create_handlers = Some(fun fields ->
-        let open Shared.Channels.Speech in
+        let open Channels.Speech in
         [
           Channel.attach_handler speech (fun speech_command board ->
             match speech_command with

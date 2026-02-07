@@ -18,7 +18,14 @@ let draw_text_in_region
       [refresh_static region] refreshes the static texture of the layer containing the region, but only within the area of the region for efficiency.
       Precondition: the region must have exactly one component. *)
 
-  let region = StringMap.find region_name regions in
+  let region =
+    match StringMap.find_opt region_name regions with
+    | Some(r) ->
+      r
+    | None ->
+      Printf.printf "Could not find region %s\n" region_name;
+      raise Not_found
+  in
 
   assert (StringMap.cardinal region.components = 1);
 
@@ -40,7 +47,7 @@ let draw_text_in_region
           (fun c ->
             let char_code = Char.code c in
             if !current_y <= bottom_boundary && !current_x <= right_boundary then begin
-              let char_obj_name = String.concat "" ["ascii" ; Int.to_string char_code] in
+              let char_obj_name = String.concat "" ["global/ascii" ; Int.to_string char_code] in
               set_static_object {layer = layer_name; x = !current_x; y = !current_y} char_obj_name text_color;
               current_x := !current_x + 1
             end

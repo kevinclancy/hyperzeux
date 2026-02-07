@@ -7,8 +7,10 @@ type ('res, 'handle_args) t_in_handler
     The handler takes arguments of type ['handle_args] and produces results of type ['res].
     At most one message is handled on demand using [Channel.try_handle_one]. *)
 
-val create : string -> 'msg t
-(** [create_channel name] Creates a channel named [name] of message type ['msg] *)
+val create : ?expected_subscribers:int -> string -> 'msg t
+(** [create ?expected_subscribers name] Creates a channel named [name] of message type ['msg].
+    If [expected_subscribers] is provided, [send_msg] will raise an error if the number of
+    active subscribers doesn't match. *)
 
 val send_msg : 'msg t -> 'msg -> unit
 (** [send_msg channel msg] Sends [msg] to all input ports for [channel] *)

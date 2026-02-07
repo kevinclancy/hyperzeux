@@ -59,6 +59,10 @@ let (^+) = Raylib.Vector2.add
 
 let (^-) = Raylib.Vector2.subtract
 
+let to_prepos (pos : position) : pre_position =
+  let {x ; y ; layer = _} = pos in
+  {x ; y}
+
 (** Get the board cell position that the mouse is currently hovering over *)
 let get_mouse_boardpos (camera_pos : Raylib.Vector2.t) (scale : float) : pre_position =
   let open Raylib in

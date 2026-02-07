@@ -2,8 +2,12 @@ type 'msg t = {
   name : string ;
   (** The name of this channel *)
 
-  queues : ('msg Queue.t) Weak.t
+  queues : ('msg Queue.t) Weak.t ;
   (** A weak array of all queues of ports subscribing to this channel *)
+
+  expected_subscribers : int option ;
+  (** If set, send_msg will raise an error if the number of active subscribers
+      doesn't match this value *)
 }
 
 type ('res, 'handle_args) t_in_handler = {
@@ -11,16 +15,26 @@ type ('res, 'handle_args) t_in_handler = {
   is_empty : unit -> bool
 }
 
-let create (name : string) : 'msg t =
+let create ?(expected_subscribers : int option) (name : string) : 'msg t =
   {
     name;
-    queues = Weak.create 14
+    queues = Weak.create 14;
+    expected_subscribers
   }
 
 let send_msg (channel : 'msg t) (msg : 'msg) : unit =
+  let subscriber_count = ref 0 in
   for i = 0 to (Weak.length channel.queues) - 1 do
-    Option.iter (fun q -> Queue.push msg q) (Weak.get channel.queues i);
-  done
+    Option.iter (fun q ->
+      incr subscriber_count;
+      Queue.push msg q
+    ) (Weak.get channel.queues i);
+  done;
+  match channel.expected_subscribers with
+  | Some expected when expected <> !subscriber_count ->
+    failwith (Printf.sprintf "Channel '%s': expected %d subscriber(s), but found %d"
+      channel.name expected !subscriber_count)
+  | _ -> ()
 
 let allocate_new_queue (channel : 'msg t) : 'msg Queue.t =
   let opt_queue = ref None in

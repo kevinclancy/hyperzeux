@@ -4,19 +4,19 @@ open AgentState
 open BoardInterface
 
 let walk_north (puppet : Puppet.t) =
-  Puppet.set_texture puppet (TextureMap.get "woman1_north.png");
+  Puppet.set_texture puppet (TextureMap.get "global/characters/woman1_north.png");
   Actions.weak_walk_north ()
 
 let walk_east (puppet : Puppet.t) =
-  Puppet.set_texture puppet (TextureMap.get "woman1_east.png");
+  Puppet.set_texture puppet (TextureMap.get "global/characters/woman1_east.png");
   Actions.weak_walk_east ()
 
 let walk_south (puppet : Puppet.t) =
-  Puppet.set_texture puppet (TextureMap.get "woman1_south.png");
+  Puppet.set_texture puppet (TextureMap.get "global/characters/woman1_south.png");
   Actions.weak_walk_south ()
 
 let walk_west (puppet : Puppet.t) =
-  Puppet.set_texture puppet (TextureMap.get "woman1_west.png");
+  Puppet.set_texture puppet (TextureMap.get "global/characters/woman1_west.png");
   Actions.weak_walk_west ()
 
 type direction =
@@ -163,7 +163,7 @@ let player_class : Agent.agent_class = {
     AgentState.create state_walking init_private
     end;
 
-  preview_texture_name = "woman1_south.png";
+  preview_texture_name = "global/characters/woman1_south.png";
 
   preview_color = Raylib.Color.skyblue;
 

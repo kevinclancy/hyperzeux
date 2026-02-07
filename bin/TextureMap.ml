@@ -3,6 +3,7 @@ open Common
 let texture_map : Raylib.Texture.t StringMap.t ref = ref StringMap.empty
 
 let load_ascii_font (image_path : string) (font_prefix : string) : unit =
+  Printf.printf "load font to %s\n" font_prefix;
   let open Raylib in
   (* ick... use string interpolation instead *)
   let full_filename = String.concat "" ["./images/" ; image_path] in
@@ -21,17 +22,23 @@ let load_ascii_font (image_path : string) (font_prefix : string) : unit =
     done;
   done
 
-let load (filename : string) : unit =
-  (* ick... use string interpolation instead *)
-  let full_filename = String.concat "" ["./images/" ; filename] in
+let load (relative_path : string) : unit =
+  let full_path = "./images/" ^ relative_path in
   let texture_map' =
     StringMap.add
-      filename
-      (full_filename |> Raylib.load_image |> Raylib.load_texture_from_image)
+      relative_path
+      (full_path |> Raylib.load_image |> Raylib.load_texture_from_image)
       !texture_map
   in
   texture_map := texture_map'
 
-  let get (name : string) : Raylib.Texture.t =
-    StringMap.find name !texture_map
+let get (name : string) : Raylib.Texture.t =
+  match StringMap.find_opt name !texture_map with
+  | Some(x) ->
+    x
+  | None ->
+    Printf.printf "Texture '%s' not found\n" name;
+    raise Not_found
+
+  StringMap.find name !texture_map
 

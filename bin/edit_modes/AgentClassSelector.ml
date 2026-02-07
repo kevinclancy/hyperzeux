@@ -13,7 +13,7 @@ let create () : t =
   let curr_class = AgentClassMap.(get_next_elem (get_first_elem ())) in
   {
     curr_class = ref curr_class ;
-    font = Raylib.load_font "fonts/romulus.png" ;
+    font = Raylib.load_font "images/global/fonts/romulus.png" ;
     color = ref curr_class.preview_color ;
     speed = ref 0.5 ;
     agent_name = ref "joe"

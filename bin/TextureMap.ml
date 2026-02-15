@@ -40,5 +40,3 @@ let get (name : string) : Raylib.Texture.t =
     Printf.printf "Texture '%s' not found\n" name;
     raise Not_found
 
-  StringMap.find name !texture_map
-

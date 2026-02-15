@@ -242,19 +242,27 @@ let resume (state : t) (board : board_interface) (t_delta_seconds : float) : res
     state.t_delta_seconds := t_delta_seconds;
     continue k ()
   | BeginScript script ->
-    match script board state.t_delta_seconds with
-    | Some(s) ->
-      state.assert_invariants board;
-      state.script_state <- Idling;
-      ChangeState(s)
-    | None ->
-      state.assert_invariants board;
-      state.script_state <- Idling;
-      MaintainState
-    | effect (CameraAction ()), k ->
-      state.assert_invariants board;
-      state.script_state <- RunningAgent k;
-      MaintainState
+    match_with
+      (script board)
+      state.t_delta_seconds
+      { retc = (fun result ->
+        match result with
+        | None ->
+          state.assert_invariants board; state.script_state <- Idling; MaintainState
+        | Some(s) ->
+          state.assert_invariants board; ChangeState(s)) ;
+        exnc = raise ;
+        effc = fun (type a) (eff : a Effect.t) ->
+          match eff with
+          | CameraAction () ->
+            Some (function (k : (a, _) continuation) ->
+              state.assert_invariants board;
+              state.script_state <- RunningAgent k;
+              MaintainState
+            )
+          | _ ->
+            None
+      }
 
 let handle_messages (state : t) (board : board_interface) : t option =
   let handle_channel (handler : channel_handler) : t option =

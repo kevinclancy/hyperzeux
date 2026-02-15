@@ -232,18 +232,27 @@ let resume (state : t) (board : board_interface) (puppet : Puppet.t) (prev_resul
   | RunningAgent k ->
     continue k prev_result
   | BeginScript script ->
-    match script board puppet with
-    | Some(s) ->
-      state.assert_invariants board puppet;
-      ChangeState(s)
-    | None ->
-      state.assert_invariants board puppet;
-      state.script_state <- Idling;
-      PerformAction(Actions.Wait)
-    | effect (Act action), k ->
-      state.assert_invariants board puppet;
-      state.script_state <- RunningAgent k;
-      PerformAction(action)
+    match_with
+      (script board)
+      puppet
+      { retc = (fun result ->
+        match result with
+        | None ->
+          state.assert_invariants board puppet; state.script_state <- Idling; PerformAction(Actions.Wait)
+        | Some(s) ->
+          state.assert_invariants board puppet; ChangeState(s)) ;
+        exnc = raise ;
+        effc = fun (type a) (eff : a Effect.t) ->
+          match eff with
+          | Act action ->
+            Some (function (k : (a, _) continuation) ->
+              state.assert_invariants board puppet;
+              state.script_state <- RunningAgent k;
+              PerformAction(action)
+            )
+          | _ ->
+            None
+      }
 
 let handle_messages (state : t) (board : board_interface) (puppet : Puppet.t) : t option =
   let handle_channel (handler : channel_handler) : t option =

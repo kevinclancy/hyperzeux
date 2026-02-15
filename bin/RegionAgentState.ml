@@ -138,18 +138,27 @@ let resume (state : t) (board : board_interface) (t_delta_seconds : float) : res
   | RunningAgent k ->
     continue k ()
   | BeginScript script ->
-    match script board with
-    | Some(s) ->
-      state.assert_invariants board;
-      ChangeState(s)
-    | None ->
-      state.assert_invariants board;
-      state.script_state <- Idling;
-      Continue
-    | effect (RegionAction action), k ->
-      state.assert_invariants board;
-      state.script_state <- RunningAgent k;
-      Continue
+    match_with
+      script
+      board
+      { retc = (fun result ->
+        match result with
+        | None ->
+          state.assert_invariants board; state.script_state <- Idling; Continue
+        | Some(s) ->
+          state.assert_invariants board; ChangeState(s)) ;
+        exnc = raise ;
+        effc = fun (type a) (eff : a Effect.t) ->
+          match eff with
+          | RegionAction action ->
+            Some (function (k : (a, _) continuation) ->
+              state.assert_invariants board;
+              state.script_state <- RunningAgent k;
+              Continue
+            )
+          | _ ->
+            None
+      }
 
 let handle_messages (state : t) (board : board_interface) : t option =
   let handle_channel (handler : channel_handler) : t option =
